@@ -15,12 +15,10 @@ The arguments are:
 # !    Σ₂      - Secondary object's covariance matrix in ECI coordinate frame
 # !              (3x3 or 6x6)
 # !    HBR     - Hard body region
-# !    RelTol  - Tolerance used for double integration convergence (usually
-# !              set to the value of 1e-08)
-# !    HBRType - Type of hard body region. This value needs to be set to one
-# !              of the following: 'circle', 'square', 'squareEquArea'
+
 """
-function pc2dfoster_circle(r₁, v₁, Σ₁, r₂, v₂, Σ₂, HBR)
+function pc2dfoster_circle(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::SymmetricM3{T},
+                            r₂::SVector{3,T}, v₂::SVector{3,T}, Σ₂::SymmetricM3{T}, HBR = T(0.2)) where T
     #
     # ! Construct relative encounter frame
     δr = r₁ - r₂
@@ -34,11 +32,10 @@ function pc2dfoster_circle(r₁, v₁, Σ₁, r₂, v₂, Σ₂, HBR)
 
     Cp = combinecov(Σ₁, Σ₂, nδv, nz)
     Up = revchol(Cp)
-    Uv = SVector{3,eltype(Up)}(
+    Uv = SVector{3,T}(
         7.071067811865475244008443621048490392848359376884740365883398689953662392310596e-01/Up[1],
         Up[2], Up[3]
     )
-    # ! CALCULATE DOUBLE INTEGRAL
 
     gaussianarea(Uv, δr₀, HBR, HBR²)
 
@@ -48,7 +45,7 @@ function combinecov(Σ₁, Σ₂, y, z)
     Σ = Σ₁ + Σ₂
     x = cross(y, z)
     a = Σ * x
-    SVector(
+    SymmetricM2(
         a' * x,
         a' * z,
         quadform(z, Σ)
@@ -57,7 +54,7 @@ end
 
 
 
-function gaussianarea(U::SVector{3,T}, x₀::T, HBR::T, HBR²::T = HBR^2) where T
+function gaussianarea(U::SVector{3,T}, x₀::T, HBR = T(0.2), HBR²::T = HBR^2) where T
     # ! Relative error within machine error in a test case.
     # ! This is better than 1e-8 ComputePcUncertainty passed to Pc2dFoster.
     # ! This algorithm is not adaptive, unlike quadgk.
@@ -128,10 +125,20 @@ end
 end
 
 
-function pcfoster_core(PriCovECI, SecCovECI, y, z, x₀, HBR, HBR² = HBR^2)
+function pcfoster_core(PriCovECI::SymmetricM3{T}, SecCovECI::SymmetricM3{T},
+                        y::SVector{3,T}, z::SVector{3,T}, x₀::T, HBR = T(0.2), HBR² = HBR^2) where T
     Cp = combinecov(PriCovECI, SecCovECI, y, z)
     Up = revchol(Cp)
-    Uv = SVector{3,eltype(Up)}(
+    Uv = SVector{3,T}(
+        7.071067811865475244008443621048490392848359376884740365883398689953662392310596e-01/Up[1],
+        Up[2], Up[3]
+    )
+    gaussianarea(Uv, x₀, HBR, HBR²)
+end
+
+function pcfoster_core(Σ::SymmetricM2{T}, x₀::T, HBR = T(0.2), HBR² = HBR^2) where T
+    Up = revchol(Σ)
+    Uv = SVector{3,T}(
         7.071067811865475244008443621048490392848359376884740365883398689953662392310596e-01/Up[1],
         Up[2], Up[3]
     )

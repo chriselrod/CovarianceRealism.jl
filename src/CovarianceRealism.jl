@@ -14,6 +14,11 @@ using   SIMDPirates, SLEEFwrap,
         StatsBase, Statistics,
         Gadfly # plotting
 
+
+export  process_BPP!,
+        run_sample!,
+        thread_sample!
+
 include("utilities.jl")
 include("distance_samples.jl")
 include("kernel_density_estimate.jl")

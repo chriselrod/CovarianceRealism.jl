@@ -64,30 +64,15 @@ end
     end
 end
 
-function mixture_fit!(d::SimulationData{P}) where P
-
-    for r ∈ 1:size(d.BigPropPoints,3)
-        mahal = d.Mahals[r]
-        opt = soptimize(mahal, initial_val(log.(d.root_mixture_scale)))
-        # for i ∈ 1:tries
-        #     optnew = soptimize(mahal, @SVector randn(2P-1))
-        #     if optnew.minimum < opt.minimum
-        #         @show opt
-        #         @show optnew
-        #         println("Updating minimum mixture fit.")
-        #     end
-        #     opt = optnew.minimum < opt.minimum ? optnew : opt
-        # end
-        probs, mixture_sf = extract_values(opt.minimizer)
-        d.MixtureResults[:,1,r] .= probs
-        d.MixtureResults[:,2,r] .= mixture_sf
-    end
+function mixture_fit(mahals::SquaredMahalanobisDistances, ::Val{P} = Val(3)) where P
+    opt = soptimize(mahals[i], @SVector zeros(2P+1))
+    extract_values(opt.minimizer)
 end
+
 function mixture_fit!(res::Vector{MixtureResults{P,T}}, mahals::Vector{<:SquaredMahalanobisDistances}) where {P,T}
 
     for i ∈ eachindex(mahals)
-        opt = soptimize(mahals[i], @SVector zeros(2P+1))
-        res[i] = extract_values(opt.minimizer)
+        res[i] = mixture_fit(mahals[i], Val(P))
     end
 
 end

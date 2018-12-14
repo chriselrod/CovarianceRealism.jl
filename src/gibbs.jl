@@ -66,6 +66,7 @@ function run_sample!(mt::MersenneTwister, mcmcres::MCMCResult, workingdata::Work
 
 
 
+    resize!(workingdata, size(X,1))
 
     invwisharts, individual_probs, uniform_probs, groups =
         workingdata.inverse_wisharts, workingdata.individual_probs,
@@ -74,7 +75,7 @@ function run_sample!(mt::MersenneTwister, mcmcres::MCMCResult, workingdata::Work
     probs, revcholwisharts, cholinvwisharts =
                     mcmcres.Probs, mcmcres.RevCholWisharts, mcmcres.CholInvWisharts
 
-    resize!(groups, size(X,1))
+
     # chain jump
     CJ = (chain - 1) * iter + 1
 

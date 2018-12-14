@@ -14,7 +14,7 @@ end
 @inline Base.pointer(rm::ResizableMatrix) = pointer(rm.data)
 Base.resize!(rm::ResizableMatrix{T,NR}, N) where {T,NR} = (rm.nrows[] = N; resize!(rm.data, NR*N))
 Base.IndexStyle(::Type{<:ResizableMatrix}) = IndexLinear()
-function ResizableMatrix{T,NR}(::UndefInitializer, N) where {T,NG}
-    data = Vector{T}(undef, N * NG)
+function ResizableMatrix{T,NR}(::UndefInitializer, N) where {T,NR}
+    data = Vector{T}(undef, N * NR)
     ResizableMatrix{T,NR}(data, Ref(N))
 end

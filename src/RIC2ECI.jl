@@ -10,7 +10,7 @@ end
 ### Is this actually faster than just multiplying matrices???
 @inline function rotate(RIC, r̂, î, ĉ)
 
-    @fasmath @inbounds begin
+    @fastmath @inbounds begin
         a = r̂[1]*RIC[1,1] + î[1]*RIC[1,2] + ĉ[1]*RIC[1,3]
         b = r̂[1]*RIC[2,1] + î[1]*RIC[2,2] + ĉ[1]*RIC[2,3]
         c = r̂[1]*RIC[3,1] + î[1]*RIC[3,2] + ĉ[1]*RIC[3,3]

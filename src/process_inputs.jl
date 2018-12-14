@@ -22,8 +22,9 @@
     end
 end
 
-@generated function process_big_prop_points!(X::AbstractMatrix{T}, Data::AbstractMatrix{T}) where T
+@generated function process_big_prop_points!(X::ResizableMatrix{T}, Data::AbstractMatrix{T}) where T
     quote
+        resize!(X, size(Data,1))
         @vectorize $T for i ∈ 1:size(Data,1)
             X[i,:] .= pdbacksolve(
                 Data[i,1],Data[i,2],Data[i,3],
@@ -35,7 +36,15 @@ end
 
 
 function generate_rank1covariances!(rank1covs::AbstractVector{InverseWishart{T}}, X::AbstractMatrix{T}) where T
+    resize!(rank1covs, size(X,1))
     @inbounds for i ∈ 1:size(X,1)
         rank1covs[i] = InverseWishart(X[i,1], X[i,2], X[i,3])
     end
+end
+
+function process_BPP!(X, rank1covs, mahals, BPP)
+    process_big_prop_points!(X, BPP)
+    generate_rank1covariances!(rank1covs, X)
+    SquaredMahalanobisDistances!(mahals, X)
+    nothing
 end

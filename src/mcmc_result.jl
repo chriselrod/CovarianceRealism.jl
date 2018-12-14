@@ -10,6 +10,13 @@ function MCMCResult(NG, iter, ::Type{T} = Float32) where T
     MCMCResult(probs, revcholwisharts, cholinvwisharts)
 end
 
+function MCMCResults(NG, iter, ::Type{T} = Float32, nthread = nthreads()) where T
+    mcmc_results = Vector{MCMCResult{T}}(undef, nthread)
+    @threads for n ∈ 1:nthread
+        mcmc_results[n] = MCMCResult(NG, iter, T)
+    end
+    mcmc_results
+end
 
 function Base.cat(a::MCMCResult{T}, b::MCMCResult{T}) where T
     MCMCResult(
