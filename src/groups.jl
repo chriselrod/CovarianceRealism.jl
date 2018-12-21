@@ -13,7 +13,7 @@ Base.size(g::Groups{NG}) where NG = size(g.groups)
 
 # Should these functions be located here, or in rng.jl?
 
-@generated function Random.rand!(mt::MersenneTwister, group::Groups{NG}, unifs::Vector{T},
+@generated function Random.rand!(rng::AbstractRNG, group::Groups{NG}, unifs::Vector{T},
                                                     probabilities::AbstractMatrix{T}) where {NG,T}
     W = SLEEFwrap.pick_vector_width(T)
     Vi = Vec{W,Int8}
@@ -23,7 +23,7 @@ Base.size(g::Groups{NG}) where NG = size(g.groups)
     vg_NG = Symbol(:vg_, NG)
     quote
         N = length(group)
-        rand!(mt, unifs)
+        rand!(rng, unifs)
         @nexprs $NG g -> vg_g = vbroadcast($Vi, g)
         pg = pointer(group)
         for n ∈ 1:($W):N+$(1-W)
@@ -35,7 +35,7 @@ Base.size(g::Groups{NG}) where NG = size(g.groups)
             vstore(vg, pg - 1 + n)
         end
         for n ∈ N+1-(N % $W):N
-            p_1 = p[n]
+            p_1 = probabilities[n]
             @nexprs $(NG-1) g -> p_{g+1} = p_g + probabilities[n,g+1]
             ptup = @ntuple $NG p
             u = unifs[n] * $p_NG
@@ -49,7 +49,7 @@ Base.size(g::Groups{NG}) where NG = size(g.groups)
 end
 
 
-@generated function Random.rand!(mt::MersenneTwister, group::Groups{NG}, unifs::AbstractVector{T},
+@generated function Random.rand!(rng::AbstractRNG, group::Groups{NG}, unifs::AbstractVector{T},
                                                     probabilities::AbstractVector{T}) where {NG,T}
     W = SLEEFwrap.pick_vector_width(T)
     Vi = Vec{W,Int8}
@@ -59,7 +59,7 @@ end
     vg_NG = Symbol(:vg_, NG)
     quote
         N = length(group)
-        rand!(mt, unifs)
+        rand!(rng, unifs)
         @nexprs $NG g -> vg_g = vbroadcast($Vi, g)
 
         p_1 = probabilities[1]
@@ -93,16 +93,16 @@ function Random.rand!(g::Groups, unifs::AbstractVector, α::AbstractArray)
         Random.rand!(Random.GLOBAL_RNG, g, unifs, α)
 end
 Random.rand!(g::Groups) = Random.rand!(Random.GLOBAL_RNG, g)
-function Random.rand!(mt::MersenneTwister, g::Groups{NG}) where NG
+function Random.rand!(rng::AbstractRNG, g::Groups{NG}) where NG
     @inbounds for n ∈ eachindex(g.groups)
-        g[n] = rand(mt, Int8(1):Int8(NG))
+        g[n] = rand(rng, Int8(1):Int8(NG))
     end
 end
 function Random.rand(::Type{Groups{NG}}, α::AbstractMatrix) where NG
     Random.rand!(Random.GLOBAL_RNG, Groups{NG}(undef,size(α,1)), α)
 end
-function Random.rand(mt::MersenneTwister, ::Type{Groups{NG}}, α::AbstractMatrix) where NG
-    Random.rand!(mt, Groups{NG}(undef,size(α,1)), α)
+function Random.rand(rng::AbstractRNG, ::Type{Groups{NG}}, α::AbstractMatrix) where NG
+    Random.rand!(rng, Groups{NG}(undef,size(α,1)), α)
 end
 function Random.rand(::Type{Groups{NG}}, N::Integer) where NG
     g = Groups{NG}(undef, N)

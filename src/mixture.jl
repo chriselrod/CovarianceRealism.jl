@@ -13,10 +13,11 @@ function log_jac(w::Weight)
     sum(w.ω)
 end
 
-@inline chi3_pdf(x) = sqrt(x) * exp(-x/2) #/ sqrt(2π)
+@inline Χ²₃_pdf(x) = sqrt(x) * exp(-x/2) #/ sqrt(2π)
+@inline Χ₃_pdf(x) = (x² = x^2; x² * exp(-x²/2)) #/ sqrt(2π)
 
 
-@generated function (d::SquaredMahalanobisDistances)(x::SVector{TwoPp1,T}) where {TwoPp1,T}
+@generated function (d::MahalanobisDistances)(x::SVector{TwoPp1,T}) where {TwoPp1,T}
     P, R = divrem(TwoPp1,2)
     R == 1 || throw("Only odd dimensions supported; probability is vector presented as 1 less.")
     quote
@@ -24,7 +25,7 @@ end
         π, target = log_jac_probs(Simplex{$(P+1),$T,$P}(SVector{$P,$T}( @ntuple $P p -> x[p]  )))
         untransformed_weights = Weight{$(P+1),$T}(SVector{$(P+1),$T}( @ntuple $(P+1) p -> x[$P+p] ) )
         target -= log_jac(untransformed_weights)
-        w = exp.(-2.0 .* untransformed_weights.ω)
+        w = @. exp(- untransformed_weights.ω)
         # @show π, w
         # loop = zero(T)
         @nexprs 4 i -> loop_i = zero(T)
@@ -42,13 +43,13 @@ end
         # So, sorting gurantees that each of the loops should be a sum of relatively similarly valued "m"s.
         # This, again, ought to increase accuracy. (summing numbers of different magnitudes is less accurate)
         @nexprs 4 i -> @inbounds for n ∈ 1:N4
-            loop_i += log(sum((@ntuple $(P+1) p -> chi3_pdf(d[n+(i-1)*N4]*w[p])*w[p]*π[p] )))
+            loop_i += log(sum((@ntuple $(P+1) p -> Χ₃_pdf(d[n+(i-1)*N4]*w[p])*w[p]*π[p] )))
         end
         # Catch remainder of the loop
         @inbounds for n ∈ N-r+1:N
-            loop_1 += log(sum((@ntuple $(P+1) p -> chi3_pdf(d[n]*w[p])*w[p]*π[p] )))
+            loop_1 += log(sum((@ntuple $(P+1) p -> Χ₃_pdf(d[n]*w[p])*w[p]*π[p] )))
         end
-        - (target + sum((@ntuple 4 loop))) / 10N
+        - (target + sum((@ntuple 4 loop))) / 20N
     end
 end
 
@@ -64,26 +65,32 @@ end
     end
 end
 
-function mixture_fit(mahals::SquaredMahalanobisDistances, ::Val{P} = Val(3)) where P
-    opt = soptimize(mahals[i], @SVector zeros(2P+1))
-    extract_values(opt.minimizer)
+function mixture_fit(mahals::MahalanobisDistances, ::Val{P} = Val(3)) where P
+    for i ∈ 1:10
+        opt = soptimize(mahals, 0.1 * (@SVector randn(2P+1)))
+        any(isnan.(opt.minimizer)) && continue
+        return extract_values(opt.minimizer)
+    end
+    @warn "Mixture failed 10 times. Mixture scale factors `1`."
+    extract_values(@SVector zeros(2P+1))
 end
 
-function mixture_fit!(res::Vector{MixtureResults{P,T}}, mahals::Vector{<:SquaredMahalanobisDistances}) where {P,T}
+function mixture_fit!(res::Vector{MixtureResults{P,T}}, mahals::Vector{<:MahalanobisDistances}) where {P,T}
 
-    for i ∈ eachindex(mahals)
+    @inbounds for i ∈ eachindex(mahals)
         res[i] = mixture_fit(mahals[i], Val(P))
     end
 
 end
 
 
-function sample_mixture_distances!(mt::MersenneTwister, d::WeightedSamples, res::MixtureResults{P}) where P
+function sample_distances!(rng::AbstractRNG, d::WeightedSamples, res::MixtureResults{P}) where P
     @fastmath for n ∈ 0:P:length(d)-P
-        dist = sqrt(abs2(randn(mt)) + abs2(randn(mt)) + abs2(randn(mt)))
+        dist = sqrt(abs2(randn(rng)) + abs2(randn(rng)) + abs2(randn(rng)))
         @inbounds for p ∈ 1:P
-            d[n*P + p] = (res.scale_factors[p]*dist, res.probs[p])
+            d[n + p] = (res.scale_factors[p]*dist, res.probs[p])
         end
     end
+    d
 end
-sample_mixture_distances!(d::WeightedSamples, res::MixtureResults) = sample_mixture_distances!(Random.GLOBAL_RNG, d, res)
+sample_distances!(d::WeightedSamples, res::MixtureResults) = sample_distances!(Random.GLOBAL_RNG, d, res)

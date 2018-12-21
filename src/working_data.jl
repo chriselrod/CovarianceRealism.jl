@@ -2,7 +2,7 @@
 
 struct WorkingData{NG,T}
     inverse_wisharts::Vector{InverseWishart{T}}
-    individual_probs::ResizableMatrix{T}
+    individual_probs::ResizableMatrix{T,NG}
     uniform_probs::Vector{T}
     groups::Groups{NG}
 end

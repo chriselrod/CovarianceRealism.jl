@@ -10,6 +10,27 @@ struct UniformSamples{T} <: AbstractSamples{T}
     distances::Vector{T}
 end
 
+function WeightedSamples{T}(::UndefInitializer, N) where T
+    WeightedSamples(Vector{T}(undef, N),Vector{T}(undef, N))
+end
+function WeightedSamples{T}(::UndefInitializer, N, nthreads) where T
+    samples = Vector{WeightedSamples{T}}(undef, nthreads)
+    Threads.@threads for thread ∈ 1:nthreads
+        samples[thread] = WeightedSamples{T}(undef, N)
+    end
+    samples
+end
+function UniformSamples{T}(::UndefInitializer, N) where T
+    UniformSamples(Vector{T}(undef, N))
+end
+function UniformSamples{T}(::UndefInitializer, N, nthreads) where T
+    samples = Vector{UniformSamples{T}}(undef, nthreads)
+    Threads.@threads for thread ∈ 1:nthreads
+        samples[thread] = UniformSamples{T}(undef, N)
+    end
+    samples
+end
+
 Base.size(s::AbstractSamples) = size(s.distances)
 Base.length(s::AbstractSamples) = length(s.distances)
 Base.getindex(ws::WeightedSamples, i) = (ws.distances[i], ws.weights[i])
@@ -21,3 +42,12 @@ function Base.setindex!(ws::WeightedSamples, (d,w), i)
 end
 Base.setindex!(us::UniformSamples, d, i) = us.distances[i] = d
 Base.IndexStyle(::Type{<:AbstractSamples}) = IndexLinear()
+function Base.resize!(s::WeightedSamples, N)
+    resize!(s.distances, N)
+    resize!(s.weights)
+    s
+end
+function Base.resize!(s::UniformSamples, N)
+    resize!(s.distances, N)
+    s
+end

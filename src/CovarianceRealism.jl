@@ -12,12 +12,24 @@ using   SIMDPirates, SLEEFwrap,
         KernelDensity,
         Interpolations,
         StatsBase, Statistics,
+        ScatteredArrays,
         Gadfly # plotting
 
 
 export  process_BPP!,
         run_sample!,
-        thread_sample!
+        thread_sample!,
+        WorkDataChains,
+        MCMCResult, MCMCResults,
+        WeightedSamples,
+        UniformSamples,
+        ResizableMatrix,
+        InverseWishart, CholInvWishart, RevCholWishart,
+        MahalanobisDistances, PercentileMatch,
+        sample_distances!,
+        KDE,
+        PercentileMatch!,
+        mixture_fit
 
 include("utilities.jl")
 include("distance_samples.jl")

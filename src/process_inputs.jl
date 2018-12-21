@@ -45,6 +45,6 @@ end
 function process_BPP!(X, rank1covs, mahals, BPP)
     process_big_prop_points!(X, BPP)
     generate_rank1covariances!(rank1covs, X)
-    SquaredMahalanobisDistances!(mahals, X)
+    MahalanobisDistances!(mahals, X)
     nothing
 end

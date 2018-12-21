@@ -30,7 +30,7 @@ function calc_Wisharts!(revcholwisharts::AbstractVector{RevCholWishart{T}},
     inv_and_cholesky!(revcholwisharts, cholinvwisharts, invwisharts)
 end
 
-@generated function update_individual_probs!(mt::MersenneTwister, probabilities::AbstractMatrix{T},
+@generated function update_individual_probs!(probabilities::AbstractMatrix{T},
                                 baseπ::AbstractVector{T}, LiV::AbstractVector{RevCholWishart{T}},
                                 ν::NTuple{NG,T}, x::AbstractMatrix{T}) where {T,NG}
     quote
@@ -60,7 +60,7 @@ function update_individual_probs!(probabilities::AbstractMatrix{T}, baseπ, grou
 end
 
 
-function run_sample!(mt::MersenneTwister, mcmcres::MCMCResult, workingdata::WorkingData{NG},
+function run_sample!(rng::AbstractRNG, mcmcres::MCMCResult, workingdata::WorkingData{NG},
                     X::AbstractMatrix{T}, rank1covs::AbstractVector{InverseWishart{T}},
                     baseπ::AbstractVector{T}, chain::Integer = 1, iter = 10000, warmup = 4000) where {T,NG}
 
@@ -80,24 +80,24 @@ function run_sample!(mt::MersenneTwister, mcmcres::MCMCResult, workingdata::Work
     CJ = (chain - 1) * iter + 1
 
     N = length(rank1covs)
-    rand!(mt, groups, uniform_probs, baseπ)
+    rand!(rng, groups, uniform_probs, baseπ)
     @uviews probs revcholwisharts cholinvwisharts begin
         @inbounds @views begin
             calc_Wisharts!(revcholwisharts[:,CJ], cholinvwisharts[:,CJ], invwisharts, groups, rank1covs)
             for i ∈ 1:warmup
-                update_probabilities!(mt, probs[:,CJ], extract_α(invwisharts, Val(NG)))
-                update_individual_probs!(mt, individual_probs, probs[:,CJ],
+                update_probabilities!(rng, probs[:,CJ], extract_α(invwisharts, Val(NG)))
+                update_individual_probs!(individual_probs, probs[:,CJ],
                         revcholwisharts[:,CJ], extract_ν(invwisharts, Val(NG)), X)
-                rand!(mt, groups, uniform_probs, individual_probs)
+                rand!(rng, groups, uniform_probs, individual_probs)
                 calc_Wisharts!(revcholwisharts[:,CJ], cholinvwisharts[:,CJ], invwisharts, groups, rank1covs)
             end
-            update_probabilities!(mt, probs[:,CJ], extract_α(invwisharts, Val(NG)))
+            update_probabilities!(rng, probs[:,CJ], extract_α(invwisharts, Val(NG)))
             for i ∈ 1:iter-1
-                update_individual_probs!(mt, individual_probs, probs[:,CJ+i-1],
+                update_individual_probs!(individual_probs, probs[:,CJ+i-1],
                         revcholwisharts[:,CJ+i-1], extract_ν(invwisharts, Val(NG)), X)
-                rand!(mt, groups, uniform_probs, individual_probs)
+                rand!(rng, groups, uniform_probs, individual_probs)
                 calc_Wisharts!(revcholwisharts[:,CJ+i], cholinvwisharts[:,CJ+i], invwisharts, groups, rank1covs)
-                update_probabilities!(mt, probs[:,CJ+i], extract_α(invwisharts, Val(NG)))
+                update_probabilities!(probs[:,CJ+i], extract_α(invwisharts, Val(NG)))
             end
         end
     end

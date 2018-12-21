@@ -307,9 +307,9 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[NLSolversBase]]
 deps = ["Calculus", "DiffEqDiffTools", "DiffResults", "Distributed", "ForwardDiff", "LinearAlgebra", "Random", "SparseArrays", "Test"]
-git-tree-sha1 = "ebfb2e96970151753575b9c4d31d47e5ae8382a5"
+git-tree-sha1 = "5a1d1b047ffb18eb72cc898245eaef3e2dd63762"
 uuid = "d41bc354-129a-5804-8e4c-c37616107c6c"
-version = "7.1.1"
+version = "7.1.2"
 
 [[NaNMath]]
 deps = ["Compat"]
@@ -430,6 +430,12 @@ path = "/home/chriselrod/.julia/dev/SLEEFwrap"
 uuid = "6e748a96-c50b-11e8-2c8a-ed394f64ea02"
 version = "0.1.0"
 
+[[ScatteredArrays]]
+deps = ["SIMDPirates", "StaticArrays", "VectorizationBase"]
+path = "/home/chriselrod/.julia/dev/ScatteredArrays"
+uuid = "7824b66e-fd9c-11e8-16df-0940c56ad1d9"
+version = "0.1.0"
+
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -520,7 +526,7 @@ uuid = "c4a57d5a-5b31-53a6-b365-19f8c011fbd6"
 version = "0.2.0"
 
 [[VectorizationBase]]
-deps = ["CpuId"]
+deps = ["CpuId", "LinearAlgebra"]
 path = "/home/chriselrod/.julia/dev/VectorizationBase"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.1.0"
