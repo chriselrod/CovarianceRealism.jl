@@ -24,6 +24,7 @@ end
 
 @generated function process_big_prop_points!(X::ResizableMatrix{T}, Data::AbstractMatrix{T}) where T
     quote
+        # N = size(Data,1)
         resize!(X, size(Data,1))
         @vectorize $T for i ∈ 1:size(Data,1)
             X[i,:] .= pdbacksolve(

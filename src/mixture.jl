@@ -66,12 +66,12 @@ end
 end
 
 function mixture_fit(mahals::MahalanobisDistances, ::Val{P} = Val(3)) where P
-    for i ∈ 1:10
+    for i ∈ 1:20
         opt = soptimize(mahals, 0.1 * (@SVector randn(2P+1)))
         any(isnan.(opt.minimizer)) && continue
         return extract_values(opt.minimizer)
     end
-    @warn "Mixture failed 10 times. Mixture scale factors `1`."
+    @warn "Mixture failed 20 times. Mixture scale factors `1`."
     extract_values(@SVector zeros(2P+1))
 end
 

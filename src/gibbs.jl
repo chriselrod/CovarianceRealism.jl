@@ -81,7 +81,9 @@ function run_sample!(rng::AbstractRNG, mcmcres::MCMCResult, workingdata::Working
 
     N = length(rank1covs)
     rand!(rng, groups, uniform_probs, baseπ)
-    @uviews probs revcholwisharts cholinvwisharts begin
+    # returning mcmcres keeps revcholwisharts, cholinvwisharts
+    # therefore no need for GC.@preserve
+    @uviews probs begin
         @inbounds @views begin
             calc_Wisharts!(revcholwisharts[:,CJ], cholinvwisharts[:,CJ], invwisharts, groups, rank1covs)
             for i ∈ 1:warmup

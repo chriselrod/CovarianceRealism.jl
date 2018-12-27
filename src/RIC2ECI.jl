@@ -1,8 +1,8 @@
 function RIC2ECI3x3(RIC, r, v)
-    y = cross(r, v)
+    y = LinearAlgebra.cross(r, v)
     r̂ = normalize(r)
     ĉ = normalize(y)
-    î = cross(ĉ, r̂)
+    î = LinearAlgebra.cross(ĉ, r̂)
     rotate(RIC, r̂, î, ĉ)
 end
 
@@ -33,5 +33,5 @@ end
         ECI33 = a + b
     end
 
-    SymmetricM( ECI11, ECI12, ECI22, ECI13, ECI23, ECI33 )
+    SymmetricM3( ECI11, ECI12, ECI22, ECI13, ECI23, ECI33 )
 end

@@ -82,17 +82,19 @@ end
 end
 
 @inline extract_ν(iw::Union{InverseWishart,CholInvWishart}) = iw[7]
-@generated function extract_ν(iw::AbstractVector{<:Union{InverseWishart,CholInvWishart}}, ::Val{NG}) where NG
+@generated function extract_ν(iw::AbstractVector{<:Union{InverseWishart{T},CholInvWishart{T}}}, ::Val{NG}) where {NG,T}
     quote
         $(Expr(:meta, :inline))
-        @ntuple $NG ng -> iw[ng][7]
+        ptr_iw = Base.unsafe_convert(Ptr{$T}, pointer(iw))
+        $(Expr(:tuple, [:(unsafe_load(ptr_iw, $((ng-1)*8) + 7 ) ) for ng ∈ 1:NG]...))
     end
 end
 @inline extract_α(iw::Union{InverseWishart,CholInvWishart}) = iw[8]
-@generated function extract_α(iw::AbstractVector{<:Union{InverseWishart,CholInvWishart}}, ::Val{NG}) where NG
+@generated function extract_α(iw::AbstractVector{<:Union{InverseWishart{T},CholInvWishart{T}}}, ::Val{NG}) where {NG,T}
     quote
         $(Expr(:meta, :inline))
-        @ntuple $NG ng -> iw[ng][8]
+        ptr_iw = Base.unsafe_convert(Ptr{$T}, pointer(iw))
+        $(Expr(:tuple, [:(unsafe_load(ptr_iw, $((ng-1)*8) + 8 ) ) for ng ∈ 1:NG]...))
     end
 end
 

@@ -22,8 +22,10 @@ SymmetricM3(A...) = SymmetricM3(SVector{6}(A...))
 @inline Base.getindex(A::Union{<: AbstractUpperTriangle, AbstractSymmetric}, i) = @inbounds A.data[i]
 @inline function Base.getindex(A::AbstractUpperTriangle, i, j)
     @boundscheck begin
-        i > j && return 0.0
+        i1, j1 = minmax(i,j)
+        (i1 < 1 || j1 > 3) && throwboundserror()
     end
+    i > j && return 0.0
     @inbounds A.data[i + (j-1)*j ÷ 2]
 end
 @inline function Base.getindex(A::AbstractSymmetric, i, j)

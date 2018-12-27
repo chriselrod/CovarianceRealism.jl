@@ -64,7 +64,10 @@ function Distributions.cdf(kde::KDE{T}, x::Real) where T
     elseif x > maximum(kde.x)
         p = one(T)
     else
-        p = kde.cdf(x)
+        # the min and max should ideally be unnecessary, but
+        # special cases have come up in practice.
+        # until we have a better way
+        p = min(max(zero(T), kde.cdf(x)),one(T))
     end
     p
 end

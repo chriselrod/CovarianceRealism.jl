@@ -18,13 +18,13 @@ The arguments are:
 
 """
 function pc2dfoster_circle(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::SymmetricM3{T},
-                            r₂::SVector{3,T}, v₂::SVector{3,T}, Σ₂::SymmetricM3{T}, HBR = T(0.2)) where T
+                            r₂::SVector{3,T}, v₂::SVector{3,T}, Σ₂::SymmetricM3{T}, HBR = T(0.02)) where T
     #
     # ! Construct relative encounter frame
     δr = r₁ - r₂
     δr₀ = norm(δr)
     δv = v₁ - v₂
-    z = cross(δr, δv)
+    z = LinearAlgebra.cross(δr, δv)
 
     # ! Relative encounter frame
     nδv = normalize(δv)
@@ -37,13 +37,13 @@ function pc2dfoster_circle(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::Symmet
         Up[2], Up[3]
     )
 
-    gaussianarea(Uv, δr₀, HBR, HBR²)
+    gaussianarea(Uv, δr₀, HBR, HBR*HBR)
 
 end
 
-function combinecov(Σ₁, Σ₂, y, z)
+@inline function combinecov(Σ₁, Σ₂, y, z)
     Σ = Σ₁ + Σ₂
-    x = cross(y, z)
+    x = LinearAlgebra.cross(y, z)
     a = Σ * x
     SymmetricM2(
         a' * x,
@@ -54,7 +54,7 @@ end
 
 
 
-function gaussianarea(U::SVector{3,T}, x₀::T, HBR = T(0.2), HBR²::T = HBR^2) where T
+@inline function gaussianarea(U::SVector{3,T}, x₀::T, HBR = T(0.2), HBR²::T = HBR^2) where T
     # ! Relative error within machine error in a test case.
     # ! This is better than 1e-8 ComputePcUncertainty passed to Pc2dFoster.
     # ! This algorithm is not adaptive, unlike quadgk.
@@ -102,8 +102,8 @@ function gaussianarea(U::SVector{3,T}, x₀::T, HBR = T(0.2), HBR²::T = HBR^2) 
 
     s = HBR / U[3]
 
-    Pc = w[1] * gdensity(s*n[1], HBR², x₀, U)
-    for i ∈ 2:8
+    @inbounds Pc = w[1] * gdensity(s*n[1], HBR², x₀, U)
+    @inbounds for i ∈ 2:8
         Pc += w[i] * gdensity(s*n[i], HBR², x₀, U)
     end
 
@@ -114,7 +114,7 @@ end
 
 @inline function gdensity(z, HBR², x₀, U)
 
-    radical = sqrt( HBR² - (U[3]*z)^2 )
+    @fastmath radical = sqrt( HBR² - (U[3]*z)^2 )
 
     U₂z = U[2]*z
     # ! Integral over positive and negative half of the ellipse.
