@@ -68,3 +68,33 @@ end
         distances
     end
 end
+
+@generated function sample_Pc!(rng::AbstractRNG, wdistances::WeightedSamples{T}, res::MCMCResult{T}) where T
+    W = SLEEFwrap.pick_vector_width(T)
+    V = SVec{W,T}
+    quote
+        ciw = res.CholInvWisharts
+        copyto!(wdistances.weights, res.Probs)
+        distances = wdistances.distances
+        # ciw = res.CholInvWisharts
+        N = length(distances)
+        vciw = vectorizable(ciw)
+        ptr_distances = vectorizable(distances)
+        for n ∈ 1:($W):N+$(1-W)
+            vZ = SVector{3}(randn(rng, $V),randn(rng, $V),randn(rng, $V))
+            vCIW = vload($V, vciw, n)
+            vx = vCIW * vZ
+            # @show extract_ν(vCIW)
+            u = randchisq(rng, extract_ν(vCIW))
+            vstore(sqrt( vx' * vx / u ), ptr_distances, n)
+        end
+        for n ∈ N+1-(N % $W):N
+            z = SVector{3}(randn(rng, T),randn(rng, T),randn(rng, T))
+            CIW = ciw[n]
+            x = CIW * z
+            u = randchisq(rng, extract_ν(CIW))
+            distances[n] = sqrt( x' * x / u )
+        end
+        distances
+    end
+end

@@ -6,7 +6,11 @@ end
 @inline update_probabilities!(probabilities, α) = update_probabilities!(Random.GLOBAL_RNG, probabilities, α)
 
 
-
+"""
+This function sets the priors of each successive group.
+Each Wishart3x3's scale is set to the identity matrix, with 5 degrees of freedom.
+The prior probability of group membership is set to 1.5^(number of groups - group number).
+"""
 @generated function set_priors!(Λs::AbstractVector{InverseWishart{T}}, ::Val{NG}) where {NG, T}
     quote
         $(Expr(:meta, :inline))
@@ -16,7 +20,11 @@ end
     end
 end
 
-
+"""
+Calculates the Wishart posteriors, conditional on group membership assignments.
+It does this via first resetting them to the priors, summing up based on group membership,
+and then finally also calculating the corresponding Cholesky factor and inverse.
+"""
 function calc_Wisharts!(revcholwisharts::AbstractVector{RevCholWishart{T}},
                         cholinvwisharts::AbstractVector{CholInvWishart{T}},
                         invwisharts::AbstractVector{InverseWishart{T}},

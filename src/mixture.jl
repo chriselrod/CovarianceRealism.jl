@@ -49,7 +49,22 @@ end
         @inbounds for n ∈ N-r+1:N
             loop_1 += log(sum((@ntuple $(P+1) p -> Χ₃_pdf(d[n]*w[p])*w[p]*π[p] )))
         end
-        - (target + sum((@ntuple 4 loop))) / 20N
+        # we normalize by 100N, so that the magnitude scale with sample size
+        # The reason for downscaling the magnitude at all is that we optimize this function
+        # via the BFGS algorithm. This is a quasi-Newton algorithm.
+        # These algorithms are iterative, repeatedly taking steps to find a local minimizer.
+        # As a quasi-Newton method, it builds an approximation to the Hessian from changes
+        # in the gradient between each of these iterations.
+        # Hessians are used to adjust the gradient in determining the next step.
+        # However, on the first iteration, the identity matrix is used to approximate the Hessian.
+        # Thus, if the gradient is extreme because the magnitude of the function is extreme,
+        # it is prone to taking wildly huge steps, landing in poorly conditioned regions of the
+        # parameter space, and end up getting stuck and terminating before finding its way back out.
+        # (Badly behaved [very non-quadratic] regions can also lead to building poor Hessian approximations,
+        #  further slowing down any potential recovery.)
+        # By downscaling, we temper the behavior, ensuring more conservative steps before a reasonable
+        # Hessian approximation is computed.
+        - (target + sum((@ntuple 4 loop))) / ( $(20TwoPp1) * N)
     end
 end
 

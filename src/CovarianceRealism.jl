@@ -13,8 +13,8 @@ using   SIMDPirates, SLEEFwrap,
         Interpolations,
         StatsBase, Statistics,
         ScatteredArrays,
+        VectorizationBase,
         Gadfly # plotting
-
 
 export  process_BPP!,
         run_sample!,
@@ -29,7 +29,8 @@ export  process_BPP!,
         sample_distances!,
         KDE,
         PercentileMatch!,
-        mixture_fit
+        mixture_fit,
+        pc2dfoster_RIC
 
 include("utilities.jl")
 include("distance_samples.jl")

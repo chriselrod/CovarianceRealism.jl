@@ -94,11 +94,29 @@ end
     @inbounds b = z[2]^2*Σ[3] + 2z[2]*z[3]*Σ[5] + z[3]^2*Σ[6]
     a + b
 end
-@inline function Base.:*(a::U, b::Number) where {U <: AbstractUpperTriangle}
+@inline function Base.:+(a::U, b::Number) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
+    U(a.data + b)
+end
+@inline function Base.:+(a::Number, b::U) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
+    U(a + b.data)
+end
+@inline function Base.:-(a::U, b::Number) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
+    U(a.data - b)
+end
+@inline function Base.:-(a::Number, b::U) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
+    U(a - b.data)
+end
+@inline function Base.:*(a::U, b::Number) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
     U(a.data * b)
 end
-@inline function Base.:*(a::Number, b::U) where {U <: AbstractUpperTriangle}
+@inline function Base.:*(a::Number, b::U) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
     U(a * b.data)
+end
+@inline function Base.:/(a::U, b::Number) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
+    U(a.data / b)
+end
+@inline function Base.:/(a::Number, b::U) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
+    U(a / b.data)
 end
 @inline function xxt(A::UpperTriangle2)
     SymmetricM2(

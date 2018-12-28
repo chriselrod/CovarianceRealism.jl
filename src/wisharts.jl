@@ -8,8 +8,11 @@ struct CholInvWishart{T} <: Wishart3x3{T}
     data::NTuple{8,T}
 end
 struct RevCholWishart{T} <: Wishart3x3{T}
-    data::NTuple{6,T}
+    data::NTuple{8,T}
 end
+
+const WishartFactor{T} = Union{CholInvWishart{T},RevCholWishart{T}}
+
 @inline InverseWishart(x::Vararg{T,8}   ) where T = InverseWishart{T}(VE.(x))
 @inline InverseWishart{T}(x::Vararg{T,8}) where T = InverseWishart{T}(VE.(x))
 @inline CholInvWishart(x::Vararg{T,8}   ) where T = CholInvWishart{T}(x)
@@ -18,6 +21,9 @@ end
 @inline RevCholWishart(x::Vararg{T,6}   ) where T = RevCholWishart{T}(x)
 @inline RevCholWishart{T}(x::Vararg{T,6}) where T = RevCholWishart{T}(x)
 @inline CholInvWishart{T}(x::Vararg{SVec{W,T},8}) where {W,T} = CholInvWishart{SVec{W,T}}(x)
+
+inv_type(::Type{CholInvWishart{T}}) where T = RevCholWishart{T}
+inv_type(::Type{RevCholWishart{T}}) where T = CholInvWishart{T}
 # @inline function SArray{Tuple{S},T,N,L}(vs::Vararg{SIMDPirates.SVec{W,T},L}) where {S,T,N,L,W}
 #     SArray{S}(vs...)
 # end
@@ -68,11 +74,23 @@ end
 @inline function Base.:+(a::W, b::W) where W <: Wishart3x3
     W(SIMDPirates.vadd(a.data, b.data))
 end
-@inline function Base.:*(L::Union{CholInvWishart{T},RevCholWishart{T}}, x::SVector{3,T}) where T
+@inline function Base.:*(L::WishartFactor{T}, x::SVector{3,T}) where T
     SVector(
         L[1]*x[1],
         L[2]*x[1] + L[4]*x[2],
         L[3]*x[1] + L[5]*x[2] + L[6]*x[3]
+    )
+end
+# L2 is treated as a lower triangular matrix
+@inline function Base.:*(L1::W, L2::NTuple{6,T}) where {T, W <: WishartFactor{T}}
+    @fastmath W(
+        L1[1]*L2[1],
+        L1[2]*L2[1] + L1[4]*L2[2],
+        L1[3]*L2[1] + L1[5]*L2[2] + L1[6]*L2[3],
+        L1[4]*L2[4],
+        L1[5]*L2[4] + L1[6]*L2[5],
+        L1[6]*L2[6],
+        L1[7],L1[8]
     )
 end
 @inline function Base.:/(a::W, x::T) where {T <: Number, W <: Wishart3x3{T}}
@@ -123,7 +141,42 @@ end
             L11, L21, L31, L22, L32, L33, iw[7], iw[8]
         )
         riwv[i] = RevCholWishart(
-            R11, R21, R31, R22, R32, R33
+            R11, R21, R31, R22, R32, R33, iw[7], iw[8]
         )
     end
+end
+@inline function triangle_inv(L::NTuple{8,T}) where T
+    @inbounds @fastmath begin
+        L11           = L[1]
+        L21, L22      = L[2], L[4]
+        L31, L32, L33 = L[3], L[5], L[6]
+        R11 = 1 / L11
+        R22 = 1 / L22
+        R33 = 1 / L33
+        R21 = - R22 * L21 * R11
+        R31 = - R33 * ( L31*R11 + L32*R21 )
+        R32 = - R33 * L32 * R22
+    end
+    @inbounds (R11, R21, R31, R22, R32, R33, L[7], L[8])
+end
+@inline function triangle_inv(L::NTuple{6,T}) where T
+    @inbounds @fastmath begin
+        L11           = L[1]
+        L21, L22      = L[2], L[4]
+        L31, L32, L33 = L[3], L[5], L[6]
+        R11 = 1 / L11
+        R22 = 1 / L22
+        R33 = 1 / L33
+        R21 = - R22 * L21 * R11
+        R31 = - R33 * ( L31*R11 + L32*R21 )
+        R32 = - R33 * L32 * R22
+    end
+    @inbounds (R11, R21, R31, R22, R32, R33)
+end
+@inline function Base.inv(w::W) where {T,W<:WishartFactor{T}}
+    inv_type(W)(triangle_inv(w.data))
+end
+
+function Random.rand(rng::AbstractRNG, ciw::CholInvWishart{T}) where T
+
 end
