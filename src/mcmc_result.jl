@@ -69,7 +69,7 @@ end
     end
 end
 
-@generated function sample_Pc!(rng::AbstractRNG, wdistances::WeightedSamples{T}, res::MCMCResult{T}) where T
+@generated function sample_Pc!(rng::AbstractRNG, wdistances::WeightedSamples{T}, conjunction, res::MCMCResult{T}) where T
     W = SLEEFwrap.pick_vector_width(T)
     V = SVec{W,T}
     quote

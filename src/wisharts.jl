@@ -15,11 +15,44 @@ const WishartFactor{T} = Union{CholInvWishart{T},RevCholWishart{T}}
 
 @inline InverseWishart(x::Vararg{T,8}   ) where T = InverseWishart{T}(VE.(x))
 @inline InverseWishart{T}(x::Vararg{T,8}) where T = InverseWishart{T}(VE.(x))
-@inline CholInvWishart(x::Vararg{T,8}   ) where T = CholInvWishart{T}(x)
-@inline CholInvWishart{T}(x::Vararg{T,8}) where T = CholInvWishart{T}(x)
-@inline CholInvWishart{T}(x::Vararg{T,6}) where T = CholInvWishart{T}(x...,T(1),T(1))
-@inline RevCholWishart(x::Vararg{T,6}   ) where T = RevCholWishart{T}(x)
-@inline RevCholWishart{T}(x::Vararg{T,6}) where T = RevCholWishart{T}(x)
+# @generated function CholInvWishart(x::Vararg{T,8}) where T
+#     quote
+#         $(Expr(:meta,:inline))
+#         CholInvWishart{$T}($(Expr(:tuple,[:(@inbounds x[$i]) for i ∈ 1:8]...)))
+#     end
+# end
+
+@inline function CholInvWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
+    x_7 = x_8 = one(T)
+    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function CholInvWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
+    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function CholInvWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
+    x_7 = x_8 = one(T)
+    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function CholInvWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
+    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function RevCholWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
+    x_7 = x_8 = one(T)
+    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function RevCholWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
+    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function RevCholWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
+    x_7 = x_8 = one(T)
+    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function RevCholWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
+    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+# @inline RevCholWishart{T}(x::Vararg{T,8}) where T = RevCholWishart{T}(x)
+# @inline RevCholWishart(x::Vararg{T,6}   ) where T = RevCholWishart{T}(x,T(1),T(1))
+# @inline RevCholWishart{T}(x::Vararg{T,6}) where T = RevCholWishart{T}(x,T(1),T(1))
 @inline CholInvWishart{T}(x::Vararg{SVec{W,T},8}) where {W,T} = CholInvWishart{SVec{W,T}}(x)
 
 inv_type(::Type{CholInvWishart{T}}) where T = RevCholWishart{T}
@@ -137,12 +170,12 @@ end
             R31 = - R33 * ( L31*R11 + L32*R21 )
             R32 = - R33 * L32 * R22
         end
-        ciwv[i] = CholInvWishart(
+        ciwv[i] = CholInvWishart((
             L11, L21, L31, L22, L32, L33, iw[7], iw[8]
-        )
-        riwv[i] = RevCholWishart(
+        ))
+        riwv[i] = RevCholWishart((
             R11, R21, R31, R22, R32, R33, iw[7], iw[8]
-        )
+        ))
     end
 end
 @inline function triangle_inv(L::NTuple{8,T}) where T
