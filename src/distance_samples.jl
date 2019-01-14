@@ -51,3 +51,10 @@ function Base.resize!(s::UniformSamples, N)
     resize!(s.distances, N)
     s
 end
+
+function KernelDensityDistributionEsimates.KDE(distances::UniformSamples)
+    KDE(KernelDensityDistributionEsimates.kde(distances.distances,npoints=2048))
+end
+function KernelDensityDistributionEsimates.KDE(distances::WeightedSamples)
+    KDE(KernelDensityDistributionEsimates.kde(distances.distances, weights = distances.weights,npoints=2048))
+end

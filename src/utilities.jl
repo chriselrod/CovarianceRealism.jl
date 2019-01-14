@@ -21,7 +21,7 @@ function ResizableMatrix{T,NC}(::UndefInitializer, N) where {T,NC}
     ResizableMatrix{T,NC}(data, Ref(N))
 end
 
-function Base.getindex(rm::ResizableMatrix{T,NC}, I::AbstractArray, ::Colon) where {T,NC}
+function Base.getindex(rm::ResizableMatrix{T,NC}, I::Union{<:AbstractArray{Bool},<:BitArray}, ::Colon) where {T,NC}
     @boundscheck rm.nrows[] < length(I) && throwboundserror()
     out = Matrix{T}(undef, sum(I), NC)
     nrows = rm.nrows[]

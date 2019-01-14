@@ -1,11 +1,37 @@
-randgamma(α) = randgamma(Random.GLOBAL_RNG, α)
-randgamma(α, β) = randgamma(Random.GLOBAL_RNG, α, β)
-randgamma(rng::AbstractRNG, α, β) = randgamma(rng, α) * β
+randgamma(α::Number) = randgamma(Random.GLOBAL_RNG, α)
+randgamma(α::Number, β::Number) = randgamma(Random.GLOBAL_RNG, α, β)
+randgamma(rng::AbstractRNG, α::Number, β::Number) = randgamma(rng, α) * β
 randgamma(rng::AbstractRNG, α::SIMDPirates.AbstractStructVec) = randgamma(rng, SIMDPirates.extract_data(α))
 function randgamma(rng::AbstractRNG, α::Vec{W,T}) where {W,T}
     SVec{W,T}(ntuple(w -> (@inbounds randgamma(rng, α[w].value)), Val(W)))
 end
-function randgamma(rng::AbstractRNG, α::T) where T
+# function randgamma(rng::AbstractRNG, α::T) where T
+#     α < 1 ? rand(rng, T)^(1/α) * randgamma_g1(rng, α+1) : randgamma_g1(rng, α)
+# end
+@inline function randgamma(rng::AbstractRNG, α::T) where T
+    α < one(T) ? exp(-randexp(rng, T)/α) * randgamma_g1(rng, α+one(T)) : randgamma_g1(rng, α)
+end
+# @inline function randgamma_g1(rng::AbstractRNG, α::T) where T
+#     OneThird = one(T)/T(3)
+#     d = α - OneThird
+#     @fastmath c = OneThird / sqrt(d)
+#     # dv3 = zero(T)
+#     # while true
+#     @fastmath while true
+#         # local v3::T
+#         # local dv3::T
+#         # x = T(randn(rng))
+#         x = Random.randn(rng, T)
+#         v = one(T) + c*x
+#         v < zero(T) && continue
+#         v3 = v^3
+#         dv3 = d*v3
+#         # -log(rand(rng, T)) > T(-0.5)*x^2 - d + dv3 - d*log(v3) && return dv3
+#         Random.randexp(rng, T) > T(-0.5)*x^2 - d + dv3 - d*log(v3) && return dv3
+#     end
+#     # dv3
+# end
+@inline function randgamma_g1(rng::AbstractRNG, α::T) where T
     OneThird = one(T)/T(3)
     d = α - OneThird
     @fastmath c = OneThird / sqrt(d)
@@ -29,5 +55,30 @@ randdirichlet(α) = randdirichlet(Random.GLOBAL_RNG, α)
 ### The garbage collector cleans up heap memory, and is slow.
 @inline function randdirichlet(rng::AbstractRNG, α)
     γ = randgamma.(Ref(rng), α)
-    @fastmath typeof(γ).mutable ? γ ./= sum(γ) : γ ./ sum(γ)
+    inv_sum_γ = 1/sum(γ)
+    @fastmath typeof(γ).mutable ? γ .*=inv_sum_γ : γ .* inv_sum_γ
 end
+function randdirichlet!(rng::AbstractRNG, probabilities, α)
+    cumulative_γ = zero(eltype(α))
+    @inbounds for i ∈ eachindex(α)
+        γ = randgamma_g1(rng, α[i])
+        # γ = α[i]
+        # γ = rand(rng, eltype(α)) * α[i]
+        cumulative_γ += γ
+        probabilities[i] = γ
+    end
+    inv_cumulative_γ = 1 / cumulative_γ
+    @inbounds for i ∈ eachindex(α)
+        probabilities[i] *= inv_cumulative_γ
+    end
+end
+randdirichlet!(probabilities, α) = randdirichlet!(GLOBAL_PCG, probabilities, α)
+# @generated function randdirichlet(rng::AbstractRNG, α::NTuple{N,T}) where {T,N}
+#     quote
+#         $(Expr(:meta,:inline))
+#         Base.Cartesian.@nexprs $N n -> γ_n = randgamma(rng, α[n])
+#         invsumγ = 1/$(Expr(:call, :+, [Symbol(:γ_,n) for n ∈ 1:N]...))
+#         $(Expr(:tuple, [:($(Symbol(:γ_,n))*invsumγ) for n ∈ 1:N]...))
+#         # γ_1
+#     end
+# end

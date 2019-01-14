@@ -27,25 +27,25 @@ const WishartFactor{T} = Union{CholInvWishart{T},RevCholWishart{T}}
     CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function CholInvWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
-    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
+    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function CholInvWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
     x_7 = x_8 = one(T)
     CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function CholInvWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
-    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
+    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function RevCholWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
     x_7 = x_8 = one(T)
-    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
+    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function RevCholWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
     RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function RevCholWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
     x_7 = x_8 = one(T)
-    CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
+    RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function RevCholWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
     RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
@@ -70,7 +70,7 @@ inv_type(::Type{RevCholWishart{T}}) where T = CholInvWishart{T}
 
 @inline extractval(x::Core.VecElement{T}) where T = x.value
 @inline extractval(x) = x
-@inline Base.getindex(w::Wishart3x3, i::Integer) = extractval(w.data[i])
+@inline Base.getindex(w::Wishart3x3, i::Integer) = extractval(@inbounds w.data[i])
 
 @inline Base.getindex(A::Wishart3x3, ::LinearStorage, i::Integer) = @inbounds A.data[i]
 
@@ -83,14 +83,14 @@ end
     im1 = i - 1
     @inbounds iw.data[3im1 - ( (im1*i) >> 1) + j].value
 end
-@inline function Base.getindex(w::Union{CholInvWishart{T},RevCholWishart{T}}, j::Integer, i::Integer) where T
+@inline function Base.getindex(w::WishartFactor{T}, j::Integer, i::Integer) where T
     j < i && return zero(T)
     @boundscheck (j > 3 || i < 1) && throwboundserror()
     im1 = i - 1
     @inbounds extractval(w.data[3im1 - ( (im1*i) >> 1) + j])
 end
 function Base.show(io::IO, ::MIME"text/plain", x::InverseWishart{T}) where T
-    denom = x[7] > 2 ? sqrt(x[7]-2) : one(T)
+    denom = x[7] > 2 ? x[7]-2 : one(T)
     println(io, "InverseWishart{$T} with ν = $(x[7]+2)")
     Base.print_matrix(io, x / denom)
 end
@@ -127,8 +127,9 @@ end
     )
 end
 @inline function Base.:/(a::W, x::T) where {T <: Number, W <: Wishart3x3{T}}
+    xinv = 1 / x
     W(
-        a[1] / x, a[2] / x, a[3] / x, a[4] / x, a[5] / x, a[6] / x, a[7], a[8]
+        a[1] * xinv, a[2] * xinv, a[3] * xinv, a[4] * xinv, a[5] * xinv, a[6] * xinv, a[7], a[8]
     )
 end
 
@@ -170,12 +171,12 @@ end
             R31 = - R33 * ( L31*R11 + L32*R21 )
             R32 = - R33 * L32 * R22
         end
-        ciwv[i] = CholInvWishart((
+        ciwv[i] = CholInvWishart(
             L11, L21, L31, L22, L32, L33, iw[7], iw[8]
-        ))
-        riwv[i] = RevCholWishart((
+        )
+        riwv[i] = RevCholWishart(
             R11, R21, R31, R22, R32, R33, iw[7], iw[8]
-        ))
+        )
     end
 end
 @inline function triangle_inv(L::NTuple{8,T}) where T

@@ -175,3 +175,25 @@ function revchol(S::SymmetricM3)
     end
     UpperTriangle3( ru11, ru12, ru22, ru13, ru23, ru33 )
 end
+
+@generated function Base.:*(A::SMatrix{M,N,T}, B::SMatrix{N,P,T}) where {M,N,P,T}
+    outtup = Vector{Expr}(undef, M*P)
+    i = 0
+    for p ∈ 1:P, m ∈ 1:M
+        i += 1
+        outtup[i] = :(@inbounds $(Symbol(:C_, p))[$m].value )
+    end
+    quote
+        $(Expr(:meta, :inline))
+        A_col = $(Expr(:tuple, [:(@inbounds Core.VecElement(A[$m,1])) for m ∈ 1:M]...))
+        Base.Cartesian.@nexprs $P p -> C_p = SIMDPirates.extract_data(SIMDPirates.vmul(A_col, @inbounds B[1,p]))
+        @inbounds for n ∈ 2:$N
+            A_col = $(Expr(:tuple, [:(@inbounds Core.VecElement(A[$m,n])) for m ∈ 1:M]...))
+            Base.Cartesian.@nexprs $P p -> C_p = SIMDPirates.vfma(A_col, (@inbounds B[n,p]), C_p)
+        end
+        SMatrix{$M,$P,$T}(
+            $(Expr(:tuple, outtup...))
+        )
+    end
+
+end
