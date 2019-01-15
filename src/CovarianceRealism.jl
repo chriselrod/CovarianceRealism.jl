@@ -1,18 +1,19 @@
 module CovarianceRealism
 
 using   SIMDPirates, SLEEF, LoopVectorization,
-        StaticOptim, StaticArrays,
+        StaticArrays,
         Random,
         Distributions,
         Base.Cartesian,
         SpecialFunctions,
         UnsafeArrays,
-        Base.Threads, KissThreading,
+        Base.Threads,
         LinearAlgebra,
         ScatteredArrays,
         VectorizationBase,
         KernelDensityDistributionEsimates,
-        RandomNumbers, VectorizedRNG
+        RandomNumbers, VectorizedRNG,
+        SIMDArrays, DifferentiableObjects
         # Gadfly # plotting
 
 export  process_BPP!,

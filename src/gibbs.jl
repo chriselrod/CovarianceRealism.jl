@@ -58,13 +58,37 @@ function calc_Wisharts!(revcholwisharts::AbstractVector{RevCholWishart{T}},
                         groups::Groups{NG}, rank1covs::Vector{InverseWishart{T}}) where {T,NG}
     set_priors!(invwisharts, Val(NG))
 
-    @inbounds for (i,g) ∈ enumerate(groups)
-        invwisharts[g] += rank1covs[i]
+    for (i,g) ∈ enumerate(groups)
+        @inbounds invwisharts[g] += rank1covs[i]
     end
 
     inv_and_cholesky!(revcholwisharts, cholinvwisharts, invwisharts)
 end
 
+# @generated function update_individual_probs!(probabilities::AbstractMatrix{T},
+#                                 baseπ::AbstractVector{T}, LiV::AbstractVector{RevCholWishart{T}},
+#                                 ν::NTuple{NG,T}, x::AbstractMatrix{T}) where {T,NG}
+#     quote
+#         @inbounds for g ∈ 1:NG
+#             # L is scaled too large by a factor of √ν; cancels out 1/ν factor on quadratic form in t-pdf
+#             exponent = T(-0.5) * ν[g] + T(-1.5)
+#             Li = LiV[g]
+#             Li11             = Li[1]
+#             Li21, Li22       = Li[2], Li[4]
+#             Li31, Li32, Li33 = Li[3], Li[5], Li[6]
+#
+#             base = log(baseπ[g]) + log(Li11) + log(Li22) + log(Li33) +
+#                     lgamma(-exponent) - lgamma(T(0.5)*ν[g]) - T(1.5)*log(ν[g])
+#
+#             @vectorize $T for i ∈ 1:size(x, 1)
+#                 lx₁ = Li11*x[i,1]
+#                 lx₂ = Li21*x[i,1] + Li22*x[i,2]
+#                 lx₃ = Li31*x[i,1] + Li32*x[i,2] + Li33*x[i,3]
+#                 probabilities[i,g] = exp(base + exponent * log(one(T) + lx₁*lx₁ + lx₂*lx₂ + lx₃*lx₃))
+#             end
+#         end
+#     end
+# end
 @generated function update_individual_probs!(probabilities::AbstractMatrix{T},
                                 baseπ::AbstractVector{T}, LiV::AbstractVector{RevCholWishart{T}},
                                 ν::NTuple{NG,T}, x::AbstractMatrix{T}) where {T,NG}
@@ -84,7 +108,10 @@ end
                 lx₁ = Li11*x[i,1]
                 lx₂ = Li21*x[i,1] + Li22*x[i,2]
                 lx₃ = Li31*x[i,1] + Li32*x[i,2] + Li33*x[i,3]
-                probabilities[i,g] = exp(base + exponent * log(one(T) + lx₁*lx₁ + lx₂*lx₂ + lx₃*lx₃))
+                probabilities[i,g] = log(one(T) + lx₁*lx₁ + lx₂*lx₂ + lx₃*lx₃)
+            end
+            @vectorize $T for i ∈ 1:size(x, 1)
+                probabilities[i,g] = exp(base + exponent * probabilities[i,g])
             end
         end
     end

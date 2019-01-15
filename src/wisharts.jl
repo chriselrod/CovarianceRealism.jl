@@ -150,7 +150,8 @@ end
     end
 end
 
-@inline function inv_and_cholesky!(riwv::AbstractVector{RevCholWishart{T}},
+# @inline
+function inv_and_cholesky!(riwv::AbstractVector{RevCholWishart{T}},
                                     ciwv::AbstractVector{CholInvWishart{T}},
                                     iwv::AbstractVector{InverseWishart{T}}) where T
 

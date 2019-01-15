@@ -4,6 +4,22 @@ struct MixtureResults{P,T}
     scale_factors::SVector{P,T}
 end
 
+struct MixtureWorkingData{P,T,S,L,O,TI,F}
+    state::DifferentiableObjects.BFGSState2{P,T,S,L}
+    ls::DifferentiableObjects.BackTracking2{O,T,TI}
+    obj::OnceDifferentiable{P,T,F,GradientConfiguration{P,T,F,ForwardDiff.Tag{F,T},P,SizedSIMDArray{Tuple{P},ForwardDiff.Dual{ForwardDiff.Tag{F,T},T,P},1,S,S},SizedSIMDArray{Tuple{P},Float64,1,S,S}},SizedSIMDArray{Tuple{P},Float64,1,S,S}}
+    initial_x::SizedSIMDArray{Tuple{P},T,1,S,S}
+end
+
+function MixtureWorkingData(mahal, ::Val{P}, ::Val{BT} = Val(2)) where {P,BT}
+    initial_x = SizedSIMDVector{P,T}(undef)
+    MixtureWorkingData(
+        DifferentiableObjects.BFGSState2(Val(P)),
+        DifferentiableObjects.BackTracking2(Val(BT)),
+        OnceDifferentiable(mahal, initial_x),
+        initial_x
+    )
+end
 
 struct Weight{P,T}
     ω::SVector{P,T}
@@ -17,7 +33,7 @@ end
 @inline Χ₃_pdf(x) = (x² = x^2; x² * exp(-x²/2)) #/ sqrt(2π)
 
 
-@generated function (d::MahalanobisDistances)(x::SVector{TwoPp1,T}) where {TwoPp1,T}
+@generated function (d::MahalanobisDistances)(x::SizedSIMDVector{TwoPp1,T}) where {TwoPp1,T}
     P, R = divrem(TwoPp1,2)
     R == 1 || throw("Only odd dimensions supported; probability is vector presented as 1 less.")
     quote
@@ -25,7 +41,7 @@ end
         π, target = log_jac_probs(Simplex{$(P+1),$T,$P}(SVector{$P,$T}( @ntuple $P p -> x[p]  )))
         untransformed_weights = Weight{$(P+1),$T}(SVector{$(P+1),$T}( @ntuple $(P+1) p -> x[$P+p] ) )
         target -= log_jac(untransformed_weights)
-        w = @. exp(- untransformed_weights.ω)
+        w = @. exp( - untransformed_weights.ω)
         # @show π, w
         # loop = zero(T)
         @nexprs 4 i -> loop_i = zero(T)
@@ -71,7 +87,7 @@ end
 @generated function initial_val(v::SVector{P}) where P
     :(vcat((@SVector zeros($(P-1))), v))
 end
-@generated function extract_values(v::SVector{TwoPp1,T}) where {TwoPp1,T}
+@generated function extract_values(v::Union{SVector{TwoPp1,T},SizedSIMDVector{TwoPp1,T}}) where {TwoPp1,T}
     P = TwoPp1 >> 1
     quote
         probs = probabilities(Simplex{$(P+1),$T,$P}(SVector{$P,$T}(@ntuple $P p -> v[p])))
@@ -80,11 +96,12 @@ end
     end
 end
 
-function mixture_fit(mahals::MahalanobisDistances, sat_number, prop_point, ::Val{P} = Val(3)) where P
+function mixture_fit(mahals::MahalanobisDistances, mwd, sat_number, prop_point, ::Val{P} = Val(3)) where P
     for i ∈ 1:20
-        opt = soptimize(mahals, 0.1 * (@SVector randn(2P+1)))
-        any(isnan.(opt.minimizer)) && continue
-        return extract_values(opt.minimizer)
+        opt, scale = DifferentiableObjects.optimize_scale!(mwd.state, mwd.obj, randn!(mwd.initial_x), mwd.ls)
+        # opt = soptimize(mahals, 0.1 * (@SVector randn(2P+1)))
+        any(isnan.(state.x_old)) && continue
+        return extract_values(state.x_old)
     end
     @warn "Mixture failed 20 times. Mixture scale factors `1`. Propogation point: $prop_point, Satellite number: $sat_number."
     extract_values(@SVector zeros(2P+1))

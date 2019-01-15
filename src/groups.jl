@@ -5,7 +5,7 @@ struct Groups{NG} <: AbstractVector{Int8}
 end
 Base.length(g::Groups{NG}) where NG = length(g.groups)
 Base.size(g::Groups{NG}) where NG = size(g.groups)
-@inline Base.getindex(g::Groups, i) = g.groups[i]
+@inline Base.getindex(g::Groups, i) = @inbounds g.groups[i]
 @inline Base.setindex!(g::Groups, v, i) = g.groups[i] = v
 @inline Base.IndexStyle(::Groups) = IndexLinear()
 @inline Base.pointer(g::Groups) = pointer(g.groups)
