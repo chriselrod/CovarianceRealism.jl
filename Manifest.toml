@@ -138,7 +138,7 @@ uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
 version = "0.0.7"
 
 [[DifferentiableObjects]]
-deps = ["DiffResults", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "SIMD", "SIMDArrays", "StaticArrays", "jBLAS"]
+deps = ["DiffResults", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "SIMDArrays", "SIMDPirates", "StaticArrays", "VectorizationBase", "jBLAS"]
 path = "/home/chriselrod/.julia/dev/DifferentiableObjects"
 uuid = "e829a12a-7dbf-11e8-18a8-f94f525a9d85"
 version = "0.1.0"
@@ -441,7 +441,7 @@ uuid = "fdea26ae-647d-5447-a871-4b548cad5224"
 version = "2.3.0"
 
 [[SIMDArrays]]
-deps = ["ForwardDiff", "LinearAlgebra", "Random", "SIMDPirates", "UnsafeArrays", "VectorizationBase", "jBLAS"]
+deps = ["ForwardDiff", "LinearAlgebra", "Random", "SIMDPirates", "StaticArrays", "UnsafeArrays", "VectorizationBase", "VectorizedRNG", "jBLAS"]
 path = "/home/chriselrod/.julia/dev/SIMDArrays"
 uuid = "604d08c6-8d09-11e8-1189-87850a518ab4"
 version = "0.1.0"

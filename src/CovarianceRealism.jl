@@ -13,7 +13,8 @@ using   SIMDPirates, SLEEF, LoopVectorization,
         VectorizationBase,
         KernelDensityDistributionEsimates,
         RandomNumbers, VectorizedRNG,
-        SIMDArrays, DifferentiableObjects
+        SIMDArrays, DifferentiableObjects,
+        ForwardDiff
         # Gadfly # plotting
 
 export  process_BPP!,
