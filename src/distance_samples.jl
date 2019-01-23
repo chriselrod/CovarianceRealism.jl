@@ -58,3 +58,9 @@ end
 function KernelDensityDistributionEsimates.KDE(distances::WeightedSamples)
     KDE(KernelDensityDistributionEsimates.kde(distances.distances, weights = distances.weights,npoints=2048))
 end
+function KernelDensity.kde(distances::UniformSamples)
+    KernelDensity.kde(distances.distances,npoints=2048)
+end
+function KernelDensity.kde(distances::WeightedSamples)
+    KernelDensity.kde(distances.distances, weights = distances.weights,npoints=2048)
+end

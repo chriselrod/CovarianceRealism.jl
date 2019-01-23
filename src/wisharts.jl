@@ -22,6 +22,7 @@ const WishartFactor{T} = Union{CholInvWishart{T},RevCholWishart{T}}
 #     end
 # end
 
+
 @inline function CholInvWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
     x_7 = x_8 = one(T)
     CholInvWishart{T}((Base.Cartesian.@ntuple 8 x))
@@ -133,8 +134,8 @@ end
     )
 end
 
-@inline extract_ν(iw::Union{InverseWishart,CholInvWishart}) = iw[7]
-@generated function extract_ν(iw::AbstractVector{<:Union{InverseWishart{T},CholInvWishart{T}}}, ::Val{NG}) where {NG,T}
+@inline extract_ν(iw::Wishart3x3) = iw[7]
+@generated function extract_ν(iw::AbstractVector{<:Wishart3x3{T}}, ::Val{NG}) where {NG,T}
     quote
         $(Expr(:meta, :inline))
         ptr_iw = Base.unsafe_convert(Ptr{$T}, pointer(iw))
@@ -212,6 +213,20 @@ end
     inv_type(W)(triangle_inv(w.data))
 end
 
-function Random.rand(rng::AbstractRNG, ciw::CholInvWishart{T}) where T
+@inline function UpperTriangle3(U::WishartFactor{T}) where T
+    UpperTriangle3(SVector{6}(ntuple(i -> (@inbounds U.data[i]), Val(6))))
+end
 
+function randinvwishart(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
+    rcwU = UpperTriangle3(rcw)
+    ν = extract_ν(rcw)
+    U11 = randchisq(rng, ν - 2)
+    U12 = randn(rng)
+    U22 = randchisq(rng, ν - 1)
+    U13 = randn(rng)
+    U23 = randn(rng)
+    U33 = randchisq(rng, ν)
+    xtx(inv(rcwU * UpperTriangle3(
+        U11, U12, U22, U13, U23, U33
+    )))
 end

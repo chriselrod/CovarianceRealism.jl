@@ -39,11 +39,11 @@ end
 end
 @generated function probabilities(θ::Simplex{P,T,Pm1}) where {P,T,Pm1}
     q = quote
-        x_sum = x_1 = z_1 = inv_logit(θ.θ[1] + $(log(1/(P-1))) )
+        x_sum = x_1 = z_1 = inv_logit(θ.θ[1] + $(T(log(1/(P-1))) ))
     end
     for p ∈ 2:Pm1
         zsym, xsym = Symbol(:z_, p), Symbol(:x_, p)
-        push!(q.args, :( $zsym = inv_logit(θ.θ[$p] + $(log(1/(P-p))) )) )
+        push!(q.args, :( $zsym = inv_logit(θ.θ[$p] + $(T(log(1/(P-p)))) )) )
         push!(q.args, :( $xsym = (1- x_sum)*$zsym ))
         push!(q.args, :( x_sum += $xsym))
     end
@@ -53,12 +53,12 @@ end
 end
 @generated function log_jac(θ::Simplex{P,T,Pm1}) where {P,T,Pm1}
     q = quote
-        x_sum = x_1 = z_1 = inv_logit(θ.θ[1] + $(log(1/(P-1))) )
+        x_sum = x_1 = z_1 = inv_logit(θ.θ[1] + $(T(log(1/(P-1))) ))
         log_det = log(z_1) + log(1 - z_1)
     end
     for p ∈ 2:Pm1
         zsym, xsym = Symbol(:z_, p), Symbol(:x_, p)
-        push!(q.args, :( $zsym = inv_logit(θ.θ[$p] + $(log(1/(P-p))) )) )
+        push!(q.args, :( $zsym = inv_logit(θ.θ[$p] + $(T(log(1/(P-p))) )) ))
         push!(q.args, :( $xsym = (1- x_sum)*$zsym ))
         push!(q.args, :( log_det += log($zsym) + log(1 - $zsym) + log(1 - x_sum) ))
         push!(q.args, :( x_sum += $xsym))
@@ -69,12 +69,12 @@ end
 end
 @generated function log_jac_probs(θ::Simplex{P,T,Pm1}) where {P,T,Pm1}
     q = quote
-        x_sum = x_1 = z_1 = inv_logit(θ.θ[1] + $(log(1/(P-1))) )
+        x_sum = x_1 = z_1 = inv_logit(θ.θ[1] + $(T(log(1/(P-1))) ))
         log_det = log(z_1) + log(1 - z_1)
     end
     for p ∈ 2:Pm1
         zsym, xsym = Symbol(:z_, p), Symbol(:x_, p)
-        push!(q.args, :( $zsym = inv_logit(θ.θ[$p] + $(log(1/(P-p))) )) )
+        push!(q.args, :( $zsym = inv_logit(θ.θ[$p] + $(T(log(1/(P-p))) )) ))
         push!(q.args, :( $xsym = (1- x_sum)*$zsym ))
         push!(q.args, :( log_det += log($zsym) + log(1 - $zsym) + log(1 - x_sum) ))
         push!(q.args, :( x_sum += $xsym))

@@ -59,3 +59,11 @@ function process_BPP!(X, rank1covs, mahals, BPP)
     MahalanobisDistances!(mahals, X)
     nothing
 end
+
+function process_BPP!(X, rank1covs, mahals, gp::GaussianProcess, gp_opt, BPP, t)
+    process_big_prop_points!(X, BPP)
+    decorrelate_data!(X, gp, gp_opt, t)
+    generate_rank1covariances!(rank1covs, X)
+    MahalanobisDistances!(mahals, X)
+    nothing
+end

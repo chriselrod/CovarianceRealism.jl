@@ -94,6 +94,25 @@ end
     @inbounds b = z[2]^2*Σ[3] + 2z[2]*z[3]*Σ[5] + z[3]^2*Σ[6]
     a + b
 end
+@inline function quadform(U::UpperTriangle3, Σ::SymmetricM3) # U * Σ * U'
+    @fastmath begin
+        U11, U12, U22, U13, U23, U33 = U[1], U[2], U[3], U[4], U[5], U[6]
+        Σ11, Σ12, Σ22, Σ13, Σ23, Σ33 = Σ[1], Σ[2], Σ[3], Σ[4], Σ[5], Σ[6]
+
+        UΣ12 = (U11*Σ12 + U12*Σ22 + U13*Σ23)
+        UΣ13 = (U11*Σ13 + U12*Σ23 + U13*Σ33)
+        S11 = (U11*Σ11 + U12*Σ12 + U13*Σ13) * U11 + UΣ12 * U12 + UΣ13 * U13
+        S12 = UΣ12 * U22 + UΣ13 * U23
+        S13 = UΣ13 * U33
+        UΣ23 = U22*Σ23 + U23*Σ33
+        S22 = (U22*Σ22 + U23*Σ23) * U22 + UΣ23 * U23
+        S23 = UΣ23*U33
+        S33 = U33*Σ33*U33
+        SymmetricM3(
+            S11, S12, S22, S13, S23, S33
+        )
+    end
+end
 @inline function Base.:+(a::U, b::Number) where {U <: Union{AbstractSymmetric,AbstractUpperTriangle}}
     U(a.data + b)
 end
@@ -119,20 +138,37 @@ end
     U(a / b.data)
 end
 @inline function xxt(A::UpperTriangle2)
-    SymmetricM2(
+    @inbounds SymmetricM2(
         A[1]^2 + A[2]^2,
         A[2]*A[3],
         A[3]^2
     )
 end
 @inline function xxt(A::UpperTriangle3)
-    SymmetricM3(
+    @inbounds SymmetricM3(
         A[1]^2 + A[2]^2 + A[4]^2,
         A[2]*A[3] + A[4]*A[5],
         A[3]^2 + A[5]^2,
         A[4]*A[6],
         A[5]*A[6],
         A[6]^2
+    )
+end
+@inline function xtx(A::UpperTriangle2)
+    @inbounds SymmetricM2(
+        A[1]^2,
+        A[1]*A[2],
+        A[2]^2 + A[3]^2
+    )
+end
+@inline function xtx(A::UpperTriangle3)
+    @inbounds SymmetricM3(
+        A[1]^2,
+        A[1]*A[2],
+        A[2]^2 + A[3]^2,
+        A[1]*A[4],
+        A[2]*A[4] + A[3]*A[5],
+        A[4]^2 + A[5]^2 + A[6]^2
     )
 end
 

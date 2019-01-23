@@ -4,10 +4,12 @@ authors = ["Chris Elrod <elrodc@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
 DifferentiableObjects = "e829a12a-7dbf-11e8-18a8-f94f525a9d85"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
+KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
 KernelDensityDistributionEsimates = "c99e8e5a-0b27-11e9-27b0-91a9e7b84b44"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"

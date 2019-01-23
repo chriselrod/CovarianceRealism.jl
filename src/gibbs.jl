@@ -214,7 +214,7 @@ function run_sample!(rng::AbstractRNG, mcmcres::MCMCResult, workingdata::Working
 end
 
 
-function singlechain_sample!(mcmcres, X, rank1covs, workingdata, BPP, baseπ, iter, warmup = 4000)
+function singlechain_sample!(mcmcres, X, rank1covs, workingdata, BPP, baseπ, iter = size(mcmcres.Probs, 2), warmup = 4000)
 
     process_big_prop_points!(X, BPP)
     generate_rank1covariances!(rank1covs, X)
@@ -222,7 +222,7 @@ function singlechain_sample!(mcmcres, X, rank1covs, workingdata, BPP, baseπ, it
     run_sample!(GLOBAL_PCG, mcmcres, workingdata, X, rank1covs, baseπ, 1, iter, warmup)
 
 end
-function singlechain_sample!(rng::AbstractRNG, mcmcres, X, rank1covs, workingdata, BPP, baseπ, iter, warmup = 4000)
+function singlechain_sample!(rng::AbstractRNG, mcmcres, X, rank1covs, workingdata, BPP, baseπ, iter = size(mcmcres.Probs, 2), warmup = 4000)
 
     process_big_prop_points!(X, BPP)
     generate_rank1covariances!(rank1covs, X)
