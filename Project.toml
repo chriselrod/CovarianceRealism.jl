@@ -4,7 +4,6 @@ authors = ["Chris Elrod <elrodc@gmail.com>"]
 version = "0.1.0"
 
 [deps]
-BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
 DifferentiableObjects = "e829a12a-7dbf-11e8-18a8-f94f525a9d85"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"

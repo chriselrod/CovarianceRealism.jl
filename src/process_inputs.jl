@@ -22,25 +22,23 @@
 #     end
 # end
 @inline function pdforwardsolve(x1,x2,x3,S11,S12,S22,S13,S23,S33)
-    @pirate begin
-        R11 = rsqrt(S11)
-        R11x1 = R11 * x1
-        L21 = R11 * S12
-        L31 = R11 * S13
-        R22 = rsqrt(S22 - L21*L21)
-        L32 = R22 * (S23 - L21 * L31)
-        R33 = rsqrt(S33 - L31*L31 - L32*L32)
+    R11 = rsqrt(S11)
+    R11x1 = R11 * x1
+    L21 = R11 * S12
+    L31 = R11 * S13
+    R22 = rsqrt(S22 - L21*L21)
+    L32 = R22 * (S23 - L21 * L31)
+    R33 = rsqrt(S33 - L31*L31 - L32*L32)
 
-        nR21x1 = R22 * L21 * R11x1
-        R31x1 = R33 * ( L32*nR21x1 - L31*R11x1 )
-        nR32 = R33 * L32 * R22
+    nR21x1 = R22 * L21 * R11x1
+    R31x1 = R33 * ( L32*nR21x1 - L31*R11x1 )
+    nR32 = R33 * L32 * R22
 
-        (
-            R11x1,
-            R22*x2 - nR21x1,
-            R31x1 - nR32*x2 + R33*x3
-        )
-    end
+    (
+        R11x1,
+        R22*x2 - nR21x1,
+        R31x1 - nR32*x2 + R33*x3
+    )
 end
 
 @generated function process_big_prop_points!(X::ResizableMatrix{T}, Data::AbstractMatrix{T}) where T
@@ -81,10 +79,10 @@ function process_BPP!(X, rank1covs, mahals, BPP)
     nothing
 end
 
-function process_BPP!(X, rank1covs, mahals, gp::GaussianProcess, gp_opt, BPP, t)
-    process_big_prop_points!(X, BPP)
-    decorrelate_data!(X, gp, gp_opt, t)
-    generate_rank1covariances!(rank1covs, X)
-    MahalanobisDistances!(mahals, X)
-    nothing
-end
+# function process_BPP!(X, rank1covs, mahals, gp::GaussianProcess, gp_opt, BPP, t)
+#     process_big_prop_points!(X, BPP)
+#     decorrelate_data!(X, gp, gp_opt, t)
+#     generate_rank1covariances!(rank1covs, X)
+#     MahalanobisDistances!(mahals, X)
+#     nothing
+# end

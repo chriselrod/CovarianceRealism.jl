@@ -1,7 +1,7 @@
 module CovarianceRealism
 
 using   SIMDPirates, SLEEF, LoopVectorization,
-        StaticArrays, BandedMatrices,
+        StaticArrays,# BandedMatrices,
         Random,
         Distributions,
         Base.Cartesian,
@@ -55,7 +55,7 @@ const GLOBAL_PCG = PCG_Scalar_and_Vector(
 include("utilities.jl")
 include("distance_samples.jl")
 # include("kernel_density_estimate.jl")
-include("gaussian_process.jl")
+# include("gaussian_process.jl")
 
 include("mahalanobis_distances.jl")
 include("misc_linear_algebra.jl") # old code, needs updating.
