@@ -58,9 +58,35 @@ end
 function KernelDensityDistributionEsimates.KDE(distances::WeightedSamples)
     KDE(KernelDensityDistributionEsimates.kde(distances.distances, weights = distances.weights,npoints=2048))
 end
+
+
+function silverman(data, α = 0.9)
+    N = length(data)
+    N <= 1 && return α
+    var_width = std(data)
+    q25, q75 = quantile(data, (0.25, 0.75))
+    quant_width = (q75 - q25) * 0.7462686567164178
+
+    width = min(var_width, quant_width)
+
+    α * width * N^(-0.2)
+end
+
 function KernelDensity.kde(distances::UniformSamples)
-    KernelDensity.kde(distances.distances,npoints=2048)
+    bw = silverman(distances.distances)
+    if bw == 0
+        x = distances.distances[1]
+        return UnivariateKDE(x:1.0:x,[1.0])
+    else
+        return KernelDensity.kde( distances.distances, bandwidth = bw, npoints=2048 )
+    end
 end
 function KernelDensity.kde(distances::WeightedSamples)
-    KernelDensity.kde(distances.distances, weights = distances.weights,npoints=2048)
+    bw = silverman(distances.distances)
+    if bw == 0
+        x = distances.distances[1]
+        return UnivariateKDE(x:1.0:x,[1.0])
+    else
+        return KernelDensity.kde( distances.distances, bandwidth = bw, weights = distances.weights, npoints=2048 )
+    end
 end

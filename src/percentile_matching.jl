@@ -20,7 +20,7 @@ end
 function match_percentiles!(pm::PercentileMatch{T}, s::MahalanobisDistances{T}) where T
     sort!(s)
     N = length(s)
-    denom = T(1) / T(N + 1)
+    denom = 1 / (N + 1)
     @inbounds for i ∈ eachindex(s)
         pm[i] = s[i] / quantile(Chi(3), i * denom)
     end

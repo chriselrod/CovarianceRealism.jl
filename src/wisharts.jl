@@ -109,15 +109,15 @@ end
     W(SIMDPirates.vadd(a.data, b.data))
 end
 @inline function Base.:*(L::WishartFactor{T}, x::SVector{3,T}) where T
-    SVector(
+    @fastmath @inbounds SVector(
         L[1]*x[1],
         L[2]*x[1] + L[4]*x[2],
         L[3]*x[1] + L[5]*x[2] + L[6]*x[3]
     )
 end
 # L2 is treated as a lower triangular matrix
-@inline function Base.:*(L1::W, L2::NTuple{6,T}) where {T, W <: WishartFactor{T}}
-    @fastmath W(
+@inline function Base.:*(L1::W, L2::Union{W,NTuple{6,T}}) where {T, W <: WishartFactor{T}}
+    @fastmath @inbounds W(
         L1[1]*L2[1],
         L1[2]*L2[1] + L1[4]*L2[2],
         L1[3]*L2[1] + L1[5]*L2[2] + L1[6]*L2[3],
@@ -127,11 +127,24 @@ end
         L1[7],L1[8]
     )
 end
-@inline function Base.:/(a::W, x::T) where {T <: Number, W <: Wishart3x3{T}}
-    xinv = 1 / x
-    W(
-        a[1] * xinv, a[2] * xinv, a[3] * xinv, a[4] * xinv, a[5] * xinv, a[6] * xinv, a[7], a[8]
+@inline function Base.:*(L1::NTuple{6,T}, L2::W) where {T, W <: WishartFactor{T}}
+    @fastmath @inbounds W(
+        L1[1]*L2[1],
+        L1[2]*L2[1] + L1[4]*L2[2],
+        L1[3]*L2[1] + L1[5]*L2[2] + L1[6]*L2[3],
+        L1[4]*L2[4],
+        L1[5]*L2[4] + L1[6]*L2[5],
+        L1[6]*L2[6],
+        L2[7],L2[8]
     )
+end
+@inline function Base.:/(a::W, x::T) where {T <: Number, W <: Wishart3x3{T}}
+    @fastmath @inbounds begin
+        xinv = 1 / x
+        W(
+            a[1] * xinv, a[2] * xinv, a[3] * xinv, a[4] * xinv, a[5] * xinv, a[6] * xinv, a[7], a[8]
+        )
+    end
 end
 
 @inline extract_ν(iw::Wishart3x3) = iw[7]
@@ -207,7 +220,7 @@ end
         R31 = - R33 * ( L31*R11 + L32*R21 )
         R32 = - R33 * L32 * R22
     end
-    @inbounds (R11, R21, R31, R22, R32, R33)
+    R11, R21, R31, R22, R32, R33
 end
 @inline function Base.inv(w::W) where {T,W<:WishartFactor{T}}
     inv_type(W)(triangle_inv(w.data))
@@ -217,7 +230,7 @@ end
     UpperTriangle3(SVector{6}(ntuple(i -> (@inbounds U.data[i]), Val(6))))
 end
 
-function randinvwishart(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
+@inline function randinvwishartfactor(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
     rcwU = UpperTriangle3(rcw)
     ν = extract_ν(rcw)
     U11 = randchisq(rng, ν - 2)
@@ -226,7 +239,10 @@ function randinvwishart(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
     U13 = randn(rng)
     U23 = randn(rng)
     U33 = randchisq(rng, ν)
-    xtx(inv(rcwU * UpperTriangle3(
+    inv(rcwU * UpperTriangle3(
         U11, U12, U22, U13, U23, U33
-    )))
+    ))
+end
+function randinvwishart(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
+    xtx( randinvwishartfactor(rng, rcw) )
 end

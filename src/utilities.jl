@@ -30,6 +30,11 @@ function Base.getindex(rm::ResizableMatrix{T,NC}, I::Union{<:AbstractArray{Bool}
     end
     out
 end
+@inline function Base.view(rm::ResizableMatrix{T,NC}, ::Colon, i::Integer) where {T,NC}
+    @boundscheck i > NC && throwboundserror()
+    nrows = rm.nrows[]
+    @view rm.data[ (1:nrows) .+ (i-1)*nrows ]
+end
 
 
 @generated function findall_zerorows(X::AbstractMatrix{T}, ::Val{ncol}) where {T,ncol}

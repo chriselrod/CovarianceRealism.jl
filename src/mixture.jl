@@ -11,7 +11,7 @@ struct MixtureWorkingData{P,T,S,L,O,TI,F}
     initial_x::SizedSIMDArray{Tuple{P},T,1,S,S}
 end
 
-function MixtureWorkingData(mahal:: MahalanobisDistances{T}, ::Val{P}, ::Val{BT} = Val(2)) where {T,P,BT}
+function MixtureWorkingData(mahal::MahalanobisDistances{T}, ::Val{P}, ::Val{BT} = Val(2)) where {T,P,BT}
     initial_x = SizedSIMDVector{P,T}(undef)
     MixtureWorkingData(
         DifferentiableObjects.BFGSState2(Val(P), T),

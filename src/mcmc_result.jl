@@ -40,13 +40,13 @@ end
 end
 
 @generated function sample_distances!(rng::AbstractRNG, wdistances::WeightedSamples{T}, res::MCMCResult{T}) where T
-    W = SLEEFwrap.pick_vector_width(T)
+    W = VectorizationBase.pick_vector_width(T)
     V = SVec{W,T}
     quote
-        ciw = res.CholInvWisharts
+        # ciw = res.CholInvWisharts
         copyto!(wdistances.weights, res.Probs)
         distances = wdistances.distances
-        # ciw = res.CholInvWisharts
+        ciw = res.CholInvWisharts
         N = length(distances)
         vciw = vectorizable(ciw)
         ptr_distances = vectorizable(distances)
@@ -71,11 +71,11 @@ end
 
 function sample_Pc!(rng::AbstractRNG, wpc_array::WeightedSamples{T1}, res::MCMCResult{T2}, r1, v1, c1, r2, v2, c2, HBR) where {T1,T2}
     rcws = res.RevCholWisharts
-    revchol_c2 = revchol(c2)
+    chol_c2 = chol(c2)
     pc_array = wpc_array.distances
     copyto!(wpc_array.weights, res.Probs)
     for i ∈ eachindex(pc_array)
-        c2_temp = quadform(revchol_c2, randinvwishart(rng, rcws[i]))
+        c2_temp = xtx(randinvwishartfactor(rng, rcws[i]) * chol_c2)
         pc_array[i] = pc2dfoster_RIC(r1, v1, c1, r2, v2, c2_temp, HBR)
     end
     wpc_array

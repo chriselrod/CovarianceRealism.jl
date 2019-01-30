@@ -89,33 +89,120 @@ end
 #         end
 #     end
 # end
+# @generated function update_individual_probs!(probabilities::AbstractMatrix{T},
+#                                 baseπ::AbstractVector{T}, LiV::AbstractVector{RevCholWishart{T}},
+#                                 ν::NTuple{NG,T}, x::AbstractMatrix{T}) where {T,NG}
+#     quote
+#         @inbounds for g ∈ 1:NG
+#             # L is scaled too large by a factor of √ν; cancels out 1/ν factor on quadratic form in t-pdf
+#             exponent = T(-0.5) * ν[g] + T(-1.5)
+#             Li = LiV[g]
+#             Li11             = Li[1]
+#             Li21, Li22       = Li[2], Li[4]
+#             Li31, Li32, Li33 = Li[3], Li[5], Li[6]
+#
+#             base = log(baseπ[g]) + log(Li11) + log(Li22) + log(Li33) +
+#                     lgamma(-exponent) - lgamma(T(0.5)*ν[g]) - T(1.5)*log(ν[g])
+#
+#             @vectorize $T for i ∈ 1:size(x, 1)
+#                 lx₁ = Li11*x[i,1]
+#                 lx₂ = Li21*x[i,1] + Li22*x[i,2]
+#                 lx₃ = Li31*x[i,1] + Li32*x[i,2] + Li33*x[i,3]
+#                 probabilities[i,g] = log(one(T) + lx₁*lx₁ + lx₂*lx₂ + lx₃*lx₃)
+#             end
+#             @vectorize $T for i ∈ 1:size(x, 1)
+#                 probabilities[i,g] = exp(base + exponent * probabilities[i,g])
+#             end
+#         end
+#     end
+# end
+
 @generated function update_individual_probs!(probabilities::AbstractMatrix{T},
                                 baseπ::AbstractVector{T}, LiV::AbstractVector{RevCholWishart{T}},
                                 ν::NTuple{NG,T}, x::AbstractMatrix{T}) where {T,NG}
-    quote
-        @inbounds for g ∈ 1:NG
-            # L is scaled too large by a factor of √ν; cancels out 1/ν factor on quadratic form in t-pdf
-            exponent = T(-0.5) * ν[g] + T(-1.5)
-            Li = LiV[g]
-            Li11             = Li[1]
-            Li21, Li22       = Li[2], Li[4]
-            Li31, Li32, Li33 = Li[3], Li[5], Li[6]
 
-            base = log(baseπ[g]) + log(Li11) + log(Li22) + log(Li33) +
-                    lgamma(-exponent) - lgamma(T(0.5)*ν[g]) - T(1.5)*log(ν[g])
+    # unroll is 3 for AVX512f, 1 otherwise
+    unroll = max(1, ( VectorizationBase.REGISTER_COUNT - 4) ÷ 9)
+    if unroll > 1
+        iters = cld(NG, unroll)
+         # more evenly distributes iters. Eg, if unroll was 3 and NG 4, now unroll = 2.
+        unroll = cld(NG, iters)
+    end
+    rem = NG % unroll
 
-            @vectorize $T for i ∈ 1:size(x, 1)
-                lx₁ = Li11*x[i,1]
-                lx₂ = Li21*x[i,1] + Li22*x[i,2]
-                lx₃ = Li31*x[i,1] + Li32*x[i,2] + Li33*x[i,3]
-                probabilities[i,g] = log(one(T) + lx₁*lx₁ + lx₂*lx₂ + lx₃*lx₃)
+    q = quote
+        base = MVector{$NG, $T}(undef)
+        exponent = MVector{$NG, $T}(undef)
+        @inbounds for rep ∈ 0:$unroll:$(NG-unroll)
+                # L is scaled too large by a factor of √ν; cancels out 1/ν factor on quadratic form in t-pdf
+            Base.Cartesian.@nexprs $unroll k -> begin
+                exponent_k = T(-0.5) * ν[rep+k] + T(-1.5)
+                Li_k = LiV[rep+k]
+                Li11_k                 = Li_k[1]
+                Li21_k, Li22_k         = Li_k[2], Li_k[4]
+                Li31_k, Li32_k, Li33_k = Li_k[3], Li_k[5], Li_k[6]
+
+                exponent[rep+k] = exponent_k
+                base[rep+k] = log(baseπ[rep+k]) + log(Li11_k) + log(Li22_k) + log(Li33_k) +
+                        lgamma(-exponent_k) - lgamma(T(0.5)*ν[rep+k]) - T(1.5)*log(ν[rep+k])
             end
             @vectorize $T for i ∈ 1:size(x, 1)
-                probabilities[i,g] = exp(base + exponent * probabilities[i,g])
+                Base.Cartesian.@nexprs $unroll k -> begin
+                    lx₁_k = Li11_k*x[i,1]
+                    lx₂_k = Li21_k*x[i,1] + Li22_k*x[i,2]
+                    lx₃_k = Li31_k*x[i,1] + Li32_k*x[i,2] + Li33_k*x[i,3]
+                    probabilities[i,rep+k] = one(T) + lx₁_k*lx₁_k + lx₂_k*lx₂_k + lx₃_k*lx₃_k
+                end
             end
         end
     end
+    if rem > 0
+        NGmrep = NG - rem
+        push!(q.args, quote
+                    Base.Cartesian.@nexprs $rem k -> begin
+                        exponent_k = T(-0.5) * ν[$NGmrep+k] + T(-1.5)
+                        Li_k = LiV[$NGmrep+k]
+                        Li11_k                 = Li_k[1]
+                        Li21_k, Li22_k         = Li_k[2], Li_k[4]
+                        Li31_k, Li32_k, Li33_k = Li_k[3], Li_k[5], Li_k[6]
+
+                        exponent[$NGmrep+k] = exponent_k
+                        base[$NGmrep+k] = log(baseπ[$NGmrep+k]) + log(Li11_k) + log(Li22_k) + log(Li33_k) +
+                                lgamma(-exponent_k) - lgamma(T(0.5)*ν[$NGmrep+k]) - T(1.5)*log(ν[$NGmrep+k])
+                    end
+                    @vectorize $T for i ∈ 1:size(x, 1)
+                        Base.Cartesian.@nexprs $rem k -> begin
+                            lx₁_k = Li11_k*x[i,1]
+                            lx₂_k = Li21_k*x[i,1] + Li22_k*x[i,2]
+                            lx₃_k = Li31_k*x[i,1] + Li32_k*x[i,2] + Li33_k*x[i,3]
+                            probabilities[i,$NGmrep+k] = one(T) + lx₁_k*lx₁_k + lx₂_k*lx₂_k + lx₃_k*lx₃_k
+                        end
+                    end
+                end)
+
+    end
+    push!(q.args, quote
+        @vectorize $T for i ∈ 1:length(probabilities)
+            probabilities[i] = log(probabilities[i])
+        end
+        # @inbounds for g ∈ 1:$NG
+        #     @vectorize $T for i ∈ 1:size(x, 1)
+        #         probabilities[i,g] = log(probabilities[i,g])
+        #     end
+        # end
+        @inbounds for g ∈ 1:$NG
+            expg = exponent[g]
+            baseg = base[g]
+            @vectorize $T for i ∈ 1:size(x, 1)
+                probabilities[i,g] = exp(baseg + expg * probabilities[i,g])
+            end
+        end
+    end)
+    q
 end
+
+
+
 function update_individual_probs!(probabilities::AbstractMatrix{T}, baseπ, groups::Groups{NG},
                             Li::AbstractMatrix{T}, ν, x::AbstractMatrix{T}) where {T,NG}
     update_individual_probs!(Random.GLOBAL_RNG, probabilities, baseπ, groups, Li, ν, x)
