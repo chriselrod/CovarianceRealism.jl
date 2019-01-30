@@ -1,5 +1,3 @@
-# This file is machine-generated - editing it directly is not advised
-
 [[AbstractFFTs]]
 deps = ["Compat", "LinearAlgebra"]
 git-tree-sha1 = "8d59c3b1463b5e0ad05a3698167f85fac90e184d"
@@ -71,9 +69,9 @@ version = "0.2.0"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "ec61a16eed883ad0cfa002d7489b3ce6d039bb9a"
+git-tree-sha1 = "f7712cd25c80a86d617c1abd23454714d4a546cc"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.4.0"
+version = "1.5.0"
 
 [[Compose]]
 deps = ["Base64", "Colors", "DataStructures", "Dates", "IterTools", "JSON", "LinearAlgebra", "Measures", "Printf", "Random", "Requires", "Test", "UUIDs"]
@@ -83,9 +81,9 @@ version = "0.7.2"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
-git-tree-sha1 = "fb86fe40cb5b35990e368709bfdc1b46dbb99dac"
+git-tree-sha1 = "b625d802587c2150c279a40a646fba63f9bd8187"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
-version = "1.1.1"
+version = "1.2.0"
 
 [[Contour]]
 deps = ["LinearAlgebra", "StaticArrays", "Test"]
@@ -139,7 +137,7 @@ version = "0.0.8"
 
 [[DifferentiableObjects]]
 deps = ["DiffResults", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "SIMDArrays", "SIMDPirates", "StaticArrays", "VectorizationBase", "jBLAS"]
-path = "/home/chriselrod/.julia/dev/DifferentiableObjects"
+path = "/home/matthejduk/.julia/dev/DifferentiableObjects"
 uuid = "e829a12a-7dbf-11e8-18a8-f94f525a9d85"
 version = "0.1.0"
 
@@ -150,7 +148,7 @@ uuid = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 version = "0.7.4"
 
 [[Distributed]]
-deps = ["Random", "Serialization", "Sockets"]
+deps = ["LinearAlgebra", "Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
@@ -214,7 +212,7 @@ uuid = "9b13fd28-a010-5f03-acff-a1bbcff69959"
 version = "0.5.0"
 
 [[InteractiveUtils]]
-deps = ["Markdown"]
+deps = ["LinearAlgebra", "Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[Interpolations]]
@@ -249,7 +247,7 @@ version = "0.5.1"
 
 [[KernelDensityDistributionEsimates]]
 deps = ["Distributions", "Gadfly", "Interpolations", "KernelDensity", "Statistics", "StatsBase"]
-path = "/home/chriselrod/.julia/dev/KernelDensityDistributionEsimates"
+path = "/home/matthejduk/.julia/dev/KernelDensityDistributionEsimates"
 uuid = "c99e8e5a-0b27-11e9-27b0-91a9e7b84b44"
 version = "0.1.0"
 
@@ -280,7 +278,7 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoopVectorization]]
 deps = ["MacroTools", "SIMDPirates", "SLEEF", "VectorizationBase"]
-path = "/home/chriselrod/.julia/dev/LoopVectorization"
+path = "/home/matthejduk/.julia/dev/LoopVectorization"
 uuid = "bdcacae8-1622-11e9-2a5c-532679323890"
 version = "0.1.0"
 
@@ -442,25 +440,31 @@ version = "2.3.0"
 
 [[SIMDArrays]]
 deps = ["ForwardDiff", "LinearAlgebra", "Random", "SIMDPirates", "StaticArrays", "UnsafeArrays", "VectorizationBase", "VectorizedRNG", "jBLAS"]
-path = "/home/chriselrod/.julia/dev/SIMDArrays"
+path = "/home/matthejduk/.julia/dev/SIMDArrays"
 uuid = "604d08c6-8d09-11e8-1189-87850a518ab4"
 version = "0.1.0"
 
 [[SIMDPirates]]
 deps = ["MacroTools", "VectorizationBase"]
-path = "/home/chriselrod/.julia/dev/SIMDPirates"
+path = "/home/matthejduk/.julia/dev/SIMDPirates"
 uuid = "21efa798-c60a-11e8-04d3-e1a92915a26a"
 version = "0.1.0"
 
 [[SLEEF]]
 deps = ["SIMD", "SIMDPirates", "VectorizationBase"]
-path = "/home/chriselrod/.julia/dev/SLEEF"
+path = "/home/matthejduk/.julia/dev/SLEEF"
 uuid = "3e6341c9-01f6-5312-b33f-f8894a2e817a"
 version = "0.5.1"
 
+[[SLEEFwrap]]
+deps = ["BinDeps", "CpuId", "Libdl", "LoopVectorization", "MacroTools", "SIMDPirates", "SpecialFunctions", "VectorizationBase"]
+path = "/home/matthejduk/.julia/dev/SLEEFwrap"
+uuid = "6e748a96-c50b-11e8-2c8a-ed394f64ea02"
+version = "0.1.0"
+
 [[ScatteredArrays]]
 deps = ["SIMDPirates", "StaticArrays", "VectorizationBase"]
-path = "/home/chriselrod/.julia/dev/ScatteredArrays"
+path = "/home/matthejduk/.julia/dev/ScatteredArrays"
 uuid = "7824b66e-fd9c-11e8-16df-0940c56ad1d9"
 version = "0.1.0"
 
@@ -519,7 +523,7 @@ uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 version = "0.7.1"
 
 [[SuiteSparse]]
-deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
+deps = ["Libdl", "LinearAlgebra", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
 [[Test]]
@@ -533,7 +537,7 @@ uuid = "30578b45-9adc-5946-b283-645ec420af67"
 version = "0.4.0"
 
 [[UUIDs]]
-deps = ["Random", "SHA"]
+deps = ["Random"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [[Unicode]]
@@ -547,13 +551,13 @@ version = "0.3.0"
 
 [[VectorizationBase]]
 deps = ["CpuId", "LinearAlgebra"]
-path = "/home/chriselrod/.julia/dev/VectorizationBase"
+path = "/home/matthejduk/.julia/dev/VectorizationBase"
 uuid = "3d5dd08c-fd9d-11e8-17fa-ed2836048c2f"
 version = "0.1.0"
 
 [[VectorizedRNG]]
 deps = ["Random", "SIMDPirates", "SLEEF", "VectorizationBase"]
-path = "/home/chriselrod/.julia/dev/VectorizedRNG"
+path = "/home/matthejduk/.julia/dev/VectorizedRNG"
 uuid = "33b4df10-0173-11e9-2a0c-851a7edac40e"
 version = "0.1.0"
 
@@ -571,6 +575,6 @@ version = "0.4.1"
 
 [[jBLAS]]
 deps = ["CpuId", "LinearAlgebra", "Random", "SIMDPirates", "StaticArrays", "VectorizationBase"]
-path = "/home/chriselrod/.julia/dev/jBLAS"
+path = "/home/matthejduk/.julia/dev/jBLAS"
 uuid = "814864de-88d5-11e8-1c72-cfea32f978d7"
 version = "0.1.0"

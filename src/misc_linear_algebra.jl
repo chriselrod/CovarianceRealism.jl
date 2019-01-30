@@ -263,3 +263,35 @@ end
     end
 
 end
+
+
+function StaticArrays.SMatrix(S::SymmetricM3)
+    @inbounds SMatrix{3,3}(
+        S[1], S[2], S[4],
+        S[2], S[3], S[5],
+        S[4], S[5], S[6]
+    )
+end
+function SymmetricM3(S::SMatrix{3,3})
+    @inbounds SymmetricM3(
+        S[1,1], S[1,2], S[2,2], S[1,3], S[2,3], S[3,3]
+    )
+end
+
+
+function correct_non_pd(S::AbstractMatrix{T}) where T
+    ef = eigen(SMatrix(S))
+    isposdef(ef) && return S # is this necessary?
+    λ = ef.values + (T(0.01^2) - ef.values[1])
+    SymmetricM3(ef.vectors * Diagonal(λ) * ef.vectors')
+end
+
+function check_and_correct_pd(S)
+    U = chol(S) # much faster check
+    isnan(U.data[end]) ? correct_non_pd(S) : S
+end
+
+function nonpdcholfact(S)
+    U = chol(S)
+    isnan(U.data[end]) ? chol(correct_non_pd(S)) : U
+end

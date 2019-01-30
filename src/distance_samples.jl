@@ -68,25 +68,25 @@ function silverman(data, α = 0.9)
     quant_width = (q75 - q25) * 0.7462686567164178
 
     width = min(var_width, quant_width)
-
+    # @show width
     α * width * N^(-0.2)
 end
 
 function KernelDensity.kde(distances::UniformSamples)
     bw = silverman(distances.distances)
-    if bw == 0
+    if bw > 0
+        return KernelDensity.kde( distances.distances, bandwidth = bw, npoints=2048 )
+    else
         x = distances.distances[1]
         return UnivariateKDE(x:1.0:x,[1.0])
-    else
-        return KernelDensity.kde( distances.distances, bandwidth = bw, npoints=2048 )
     end
 end
 function KernelDensity.kde(distances::WeightedSamples)
     bw = silverman(distances.distances)
-    if bw == 0
+    if bw > 0
+        return KernelDensity.kde( distances.distances, bandwidth = bw, weights = distances.weights, npoints=2048 )
+    else
         x = distances.distances[1]
         return UnivariateKDE(x:1.0:x,[1.0])
-    else
-        return KernelDensity.kde( distances.distances, bandwidth = bw, weights = distances.weights, npoints=2048 )
     end
 end

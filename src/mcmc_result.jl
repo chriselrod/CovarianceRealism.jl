@@ -72,6 +72,7 @@ end
 function sample_Pc!(rng::AbstractRNG, wpc_array::WeightedSamples{T1}, res::MCMCResult{T2}, r1, v1, c1, r2, v2, c2, HBR) where {T1,T2}
     rcws = res.RevCholWisharts
     chol_c2 = chol(c2)
+    # chol_c2 = nonpdcholfact(c2)
     pc_array = wpc_array.distances
     copyto!(wpc_array.weights, res.Probs)
     for i ∈ eachindex(pc_array)

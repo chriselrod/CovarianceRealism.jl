@@ -80,7 +80,7 @@ end
 #             base = log(baseπ[g]) + log(Li11) + log(Li22) + log(Li33) +
 #                     lgamma(-exponent) - lgamma(T(0.5)*ν[g]) - T(1.5)*log(ν[g])
 #
-#             @vectorize $T for i ∈ 1:size(x, 1)
+#             @cvectorize $T for i ∈ 1:size(x, 1)
 #                 lx₁ = Li11*x[i,1]
 #                 lx₂ = Li21*x[i,1] + Li22*x[i,2]
 #                 lx₃ = Li31*x[i,1] + Li32*x[i,2] + Li33*x[i,3]
@@ -104,13 +104,13 @@ end
 #             base = log(baseπ[g]) + log(Li11) + log(Li22) + log(Li33) +
 #                     lgamma(-exponent) - lgamma(T(0.5)*ν[g]) - T(1.5)*log(ν[g])
 #
-#             @vectorize $T for i ∈ 1:size(x, 1)
+#             @cvectorize $T for i ∈ 1:size(x, 1)
 #                 lx₁ = Li11*x[i,1]
 #                 lx₂ = Li21*x[i,1] + Li22*x[i,2]
 #                 lx₃ = Li31*x[i,1] + Li32*x[i,2] + Li33*x[i,3]
 #                 probabilities[i,g] = log(one(T) + lx₁*lx₁ + lx₂*lx₂ + lx₃*lx₃)
 #             end
-#             @vectorize $T for i ∈ 1:size(x, 1)
+#             @cvectorize $T for i ∈ 1:size(x, 1)
 #                 probabilities[i,g] = exp(base + exponent * probabilities[i,g])
 #             end
 #         end
@@ -119,7 +119,7 @@ end
 
 @generated function update_individual_probs!(probabilities::AbstractMatrix{T},
                                 baseπ::AbstractVector{T}, LiV::AbstractVector{RevCholWishart{T}},
-                                ν::NTuple{NG,T}, x::AbstractMatrix{T}) where {T,NG}
+                                ν::NTuple{NG,T}, x::AbstractMatrix{T}) where {NG,T}
 
     # unroll is 3 for AVX512f, 1 otherwise
     unroll = max(1, ( VectorizationBase.REGISTER_COUNT - 4) ÷ 9)
@@ -146,7 +146,7 @@ end
                 base[rep+k] = log(baseπ[rep+k]) + log(Li11_k) + log(Li22_k) + log(Li33_k) +
                         lgamma(-exponent_k) - lgamma(T(0.5)*ν[rep+k]) - T(1.5)*log(ν[rep+k])
             end
-            @vectorize $T for i ∈ 1:size(x, 1)
+            @cvectorize $T for i ∈ 1:size(x, 1)
                 Base.Cartesian.@nexprs $unroll k -> begin
                     lx₁_k = Li11_k*x[i,1]
                     lx₂_k = Li21_k*x[i,1] + Li22_k*x[i,2]
@@ -170,7 +170,7 @@ end
                         base[$NGmrep+k] = log(baseπ[$NGmrep+k]) + log(Li11_k) + log(Li22_k) + log(Li33_k) +
                                 lgamma(-exponent_k) - lgamma(T(0.5)*ν[$NGmrep+k]) - T(1.5)*log(ν[$NGmrep+k])
                     end
-                    @vectorize $T for i ∈ 1:size(x, 1)
+                    @cvectorize $T for i ∈ 1:size(x, 1)
                         Base.Cartesian.@nexprs $rem k -> begin
                             lx₁_k = Li11_k*x[i,1]
                             lx₂_k = Li21_k*x[i,1] + Li22_k*x[i,2]
@@ -182,20 +182,23 @@ end
 
     end
     push!(q.args, quote
-        @vectorize $T for i ∈ 1:length(probabilities)
+        @cvectorize $T for i ∈ 1:length(probabilities)
             probabilities[i] = log(probabilities[i])
         end
         # @inbounds for g ∈ 1:$NG
-        #     @vectorize $T for i ∈ 1:size(x, 1)
+        #     @cvectorize $T for i ∈ 1:size(x, 1)
         #         probabilities[i,g] = log(probabilities[i,g])
         #     end
-        # end
+        # endlog
         @inbounds for g ∈ 1:$NG
             expg = exponent[g]
             baseg = base[g]
-            @vectorize $T for i ∈ 1:size(x, 1)
-                probabilities[i,g] = exp(baseg + expg * probabilities[i,g])
+            @cvectorize $T for i ∈ 1:size(x, 1)
+                probabilities[i,g] = baseg + expg * probabilities[i,g]
             end
+        end
+        @cvectorize $T for i ∈ 1:length(probabilities)
+            probabilities[i] = exp(probabilities[i])
         end
     end)
     q

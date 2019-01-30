@@ -36,8 +36,8 @@ end
 sample_distances!(d::UniformSamples, res::PercentileMatch) = sample_distances!(Random.GLOBAL_RNG, d, res)
 
 function sample_Pc!(rng::AbstractRNG, pc_array, res::PercentileMatch, conj, n::Int)
-    c1 = SymmetricM3(conj[n,73],conj[n,74],conj[n,79],conj[n,75],conj[n,80],conj[n,84]) / 1e6
-    c2 = SymmetricM3(conj[n,133],conj[n,124],conj[n,139],conj[n,135],conj[n,140],conj[n,144]) / 1e6
+    c1 = SymmetricM3(conj[n,73],conj[n,74],conj[n,79],conj[n,75],conj[n,80],conj[n,84]) / 1e6 |> check_and_correct_pd
+    c2 = SymmetricM3(conj[n,133],conj[n,124],conj[n,139],conj[n,135],conj[n,140],conj[n,144]) / 1e6 |> check_and_correct_pd
 
 
     r1 = SVector(ntuple(i -> conj[n,i+171], Val(3)))
