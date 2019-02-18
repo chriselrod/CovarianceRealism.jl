@@ -287,7 +287,7 @@ function run_sample!(rng::AbstractRNG, mcmcres::MCMCResult, workingdata::Working
                 rand!(rng, groups, uniform_probs, individual_probs)
                 calc_Wisharts!(revcholwisharts[:,CJ], cholinvwisharts[:,CJ], invwisharts, groups, rank1covs)
             end
-            update_probabilities!(rng, probs[:,CJ], extract_α(invwisharts, Val(NG)))
+            randdirichlet!(rng, probs[:,CJ], extract_α(invwisharts, Val(NG)))
             for i ∈ 1:iter-1
                 update_individual_probs!(individual_probs, probs[:,CJ+i-1],
                         revcholwisharts[:,CJ+i-1], extract_ν(invwisharts, Val(NG)), X)

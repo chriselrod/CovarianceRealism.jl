@@ -61,7 +61,7 @@ end
 function randdirichlet!(rng::AbstractRNG, probabilities, α)
     cumulative_γ = zero(eltype(α))
     @inbounds for i ∈ eachindex(α)
-        γ = randgamma_g1(rng, α[i])
+        γ = randgamma(rng, α[i])
         # γ = α[i]
         # γ = rand(rng, eltype(α)) * α[i]
         cumulative_γ += γ

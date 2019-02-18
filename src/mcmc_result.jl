@@ -40,7 +40,7 @@ end
 end
 
 @generated function sample_distances!(rng::AbstractRNG, wdistances::WeightedSamples{T}, res::MCMCResult{T}) where T
-    W = VectorizationBase.pick_vector_width(T)
+    W = 2*VectorizationBase.pick_vector_width(T)
     V = SVec{W,T}
     quote
         # ciw = res.CholInvWisharts
@@ -56,7 +56,7 @@ end
             vx = vCIW * vZ
             # @show extract_ν(vCIW)
             u = randchisq(rng, extract_ν(vCIW))
-            vstore(sqrt( vx' * vx / u ), ptr_distances, n)
+            vstore(sqrt( vx' * vx / u ), ptr_distances + n - 1)
         end
         for n ∈ N+1-(N % $W):N
             z = SVector{3}(randn(rng, T),randn(rng, T),randn(rng, T))
