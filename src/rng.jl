@@ -8,30 +8,39 @@ end
 # function randgamma(rng::AbstractRNG, α::T) where T
 #     α < 1 ? rand(rng, T)^(1/α) * randgamma_g1(rng, α+1) : randgamma_g1(rng, α)
 # end
+@inline function randgamma(rng::VectorizedRNG.PCG, α::SVec{W,T}) where {W,T}
+    vifelse(α < one(T), SLEEF.exp(-SVec(randexp(rng, Vec{W,T}))/α) * randgamma_g1(rng, α+one(T)), randgamma_g1(rng, α))
+end
+@inline function randgamma_g1(rng::VectorizedRNG.PCG, α::SVec{W,T}) where {W,T}
+    OneThird = vbroadcast(SVec{W,T},one(T)/T(3))
+    d = α - OneThird
+    c = OneThird * rsqrt(d)
+    dv3_out = OneThird
+    accepted = SVec(ntuple(i -> Core.VecElement(false), Val(W)))
+    while true
+        x = SVec(randn(rng, Vec{W,T}))
+        v = one(T) + c*x
+        mask1 = v > zero(T)
+        # v > zero(T) || continue
+        v3 = v * v * v
+        dv3 = SIMDPirates.evmul(d,v3)
+        mask2 = SVec(randexp(rng, Vec{W,T})) > T(-0.5)*x*x - d + dv3 - d*SLEEF.log_fast(v3)
+        mask3 = mask1 & mask2
+        not_accepted = !accepted
+        # not_accepted = SIMDPirates.vnot(accepted)
+        dv3_out = vifelse(mask3 & not_accepted, dv3, dv3_out)
+        accepted = accepted | mask3
+        all(accepted) && return dv3_out
+        # all(accepted) && return SIMDPirates.extract_data(dv3_out)
+    end
+end
+@inline randchisq(rng::VectorizedRNG.PCG, ν::SVec{W,T}) where {W,T} = T(2.0) * randgamma(rng, T(0.5)*ν)
+@inline randinvchisq(rng::VectorizedRNG.PCG, ν::SVec{W,T}) where {W,T} = T(0.5) / (randgamma(rng, T(0.5)*ν))
+
 @inline function randgamma(rng::AbstractRNG, α::T) where T
     α < one(T) ? exp(-randexp(rng, T)/α) * randgamma_g1(rng, α+one(T)) : randgamma_g1(rng, α)
 end
-# @inline function randgamma_g1(rng::AbstractRNG, α::T) where T
-#     OneThird = one(T)/T(3)
-#     d = α - OneThird
-#     @fastmath c = OneThird / sqrt(d)
-#     # dv3 = zero(T)
-#     # while true
-#     @fastmath while true
-#         # local v3::T
-#         # local dv3::T
-#         # x = T(randn(rng))
-#         x = Random.randn(rng, T)
-#         v = one(T) + c*x
-#         v < zero(T) && continue
-#         v3 = v^3
-#         dv3 = d*v3
-#         # -log(rand(rng, T)) > T(-0.5)*x^2 - d + dv3 - d*log(v3) && return dv3
-#         Random.randexp(rng, T) > T(-0.5)*x^2 - d + dv3 - d*log(v3) && return dv3
-#     end
-#     # dv3
-# end
-@inline function randgamma_g1(rng::AbstractRNG, α::T) where T
+@inline function randgamma_g1(rng::AbstractRNG, α::T) where {T}
     OneThird = one(T)/T(3)
     d = α - OneThird
     @fastmath c = OneThird / sqrt(d)
@@ -44,8 +53,8 @@ end
         randexp(rng, T) > T(-0.5)*x^2 - d + dv3 - d*log(v3) && return dv3
     end
 end
-@inline randchisq(rng::AbstractRNG, ν::T) where T = T(2.0) * randgamma(rng, T(0.5)ν)
-@inline randchisq(ν::T) where T = T(2.0) * randgamma(T(0.5)ν)
+@inline randchisq(rng::AbstractRNG, ν::T) where {T} = T(2.0) * randgamma(rng, T(0.5)ν)
+@inline randchisq(ν::T) where {T} = T(2.0) * randgamma(T(0.5)ν)
 @inline randchi(rng::AbstractRNG, ν) = @fastmath sqrt(randchisq(rng, ν))
 @inline randchi(ν) = @fastmath sqrt(randchisq(ν))
 randdirichlet(α) = randdirichlet(Random.GLOBAL_RNG, α)

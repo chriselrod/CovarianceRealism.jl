@@ -6,6 +6,16 @@ function RIC2ECI3x3(RIC, r, v)
     rotate(RIC, r̂, î, ĉ)
 end
 
+@inline function combinecov(Σ₁, Σ₂, y, z)
+    Σ = Σ₁ + Σ₂
+    x = LinearAlgebra.cross(y, z)
+    a = Σ * x
+    SymmetricM2(
+        a' * x,
+        a' * z,
+        quadform(z, Σ)
+    )
+end
 
 ### Is this actually faster than just multiplying matrices???
 @inline function rotate(RIC, r̂, î, ĉ)
@@ -34,4 +44,19 @@ end
     end
 
     SymmetricM3( ECI11, ECI12, ECI22, ECI13, ECI23, ECI33 )
+end
+
+@inline function RIC_to_2D(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::SymmetricM3{T},
+                            r₂::SVector{3,T}, v₂::SVector{3,T}, Σ₂::SymmetricM3{T}) where {T}
+    δr = r₁ - r₂
+    δr₀ = norm(δr)
+    δv = v₁ - v₂
+    z = LinearAlgebra.cross(δr, δv)
+
+    # ! Relative encounter frame
+    nδv = normalize(δv)
+    nz  = normalize(z)
+
+    Cp = combinecov(RIC2ECI3x3(Σ₁, r₁, v₁), RIC2ECI3x3(Σ₂, r₂, v₂), nδv, nz)
+    Cp, δr₀
 end

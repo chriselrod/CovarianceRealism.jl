@@ -40,6 +40,83 @@ function pc2dfoster_circle(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::Symmet
     gaussianarea_old(Uv, δr₀, HBR, HBR*HBR)
 
 end
+
+
+"""
+Lv is the Cholesky factor of the 2x2 projection at TCA.
+δr₀ is the projected miss distance.
+
+The function will tabulate a series of N * 2 * W misses, where W is the CPU vector width.
+W should be a function of both the data type used (eg, it will be twice as large for single
+precision as it will for double), and CPU architecture.
+For example, with double precision and the sse instruction set (128 bit vectors), W will be 2. With single precision
+and the avx512f instruction set (512 bit), W will be 16.
+
+
+"""
+@generated function sample_misses!(table::Array{SVec{W,T},3}, r1, v1, r2, v2, c1, c2, N) where {T,W}
+    # W = VectorizationBase.pick_vector_width(T)
+    quote
+        rng = VectorizedRNG.GLOBAL_vPCG
+        # Transpose U; broadcast the individual elements.
+        Σ, δ = CovarianceRealism.RIC_to_2D(r1, v1, c1, r2, v2, c2)
+        U = chol(Σ)
+
+        L11 = vbroadcast(SVec{$W,$T}, U[1,1])
+        L21 = vbroadcast(SVec{$W,$T}, U[1,2])
+        L22 = vbroadcast(SVec{$W,$T}, U[2,2])
+        vδr₀ = vbroadcast(SVec{$W,$T}, δr₀)
+        @inbounds for n ∈ 1:N
+            # Sampling random normals in batches of 4W is fastest on the tested architecture.
+            z1_and_2 = randn(rng, Vec{$(4W),$T})
+
+            # We want coordinates z1 and z2. Because we sampled 4W, we have 2W of each z1 and z2.
+            # In some versions of Julia there is a bug that causes a more typical version of constructing these tuples:
+            # z1_1 = ntuple(Val($W)) do i x1_and_2[i] end
+            # or equivalently
+            # z1_1 = ntuple(i -> x1_and_2[i], Val($W))
+            # So we construct the tuple explicitly here. This is fast in all versions of Julia > 1.
+            z1_1 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈    1: W]...)))
+            z1_2 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈  W+1:2W]...)))
+            z2_1 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈ 2W+1:3W]...)))
+            z2_2 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈ 3W+1:4W]...)))
+
+            # Multiply Calculate L * z = x.
+            # Additionally, subtract the distance δr₀, which we treat as [δr₀, 0]
+            x1_1 = L11 * z1_1 - vδr₀
+            x1_2 = L11 * z1_2 - vδr₀
+
+            x2_1 = L21 * z1_1 + L22 * z2_1
+            x2_2 = L21 * z1_2 + L22 * z2_2
+
+            # Calculate distance, multiply 1000 to translate from kilometers to meters.
+            δ_1 = sqrt( x1_1*x1_1 + x2_1*x2_1 ) * T(10^3)
+            δ_2 = sqrt( x1_2*x1_2 + x2_2*x2_2 ) * T(10^3)
+            vi = vbroadcast(SVec{$W,$T}, $T(100))
+            l_1 = δ_1 < vi
+            l_2 = δ_2 < vi
+            # Every 5 times, we check if we can break early.
+            for i ∈ 100:-5:1
+                (any(l_1_5) || any(l_2_5)) || break
+                Base.Cartesian.@nexprs 5 j -> begin
+                    vi_j = vbroadcast(SVec{$W,$T}, $T(i+1-j))
+                    ti_1_j = table[1,j,i+1-j]
+                    l_1_j = δ_1 < vi_j
+                    ti_1_j = vifelse(l_1_j, ti_1_j + vbroadcast(SVec{W,T},one(T)), ti_1_j)
+                    table[2,j,i+1-j] = ti_1_j
+                    ti_2_j = table[2,j,i+1-j]
+                    l_2_j = δ_2 < vi_j
+                    ti_2_j = vifelse(l_2_j, ti_2_j + vbroadcast(SVec{W,T},one(T)), ti_2_j)
+                    table[2,j,i+1-j] = ti_2_j
+                end
+            end
+        end
+
+    end
+end
+
+
+
 function pc2dfoster_circle_old(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::SymmetricM3{T},
                             r₂::SVector{3,T}, v₂::SVector{3,T}, Σ₂::SymmetricM3{T}, HBR = T(0.02)) where T
     #
@@ -90,18 +167,8 @@ end
 
 function pc2dfoster_RIC(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::SymmetricM3{T},
                             r₂::SVector{3,T}, v₂::SVector{3,T}, Σ₂::SymmetricM3{T}, HBR = T(0.02)) where T
-    #
-    # ! Construct relative encounter frame
-    δr = r₁ - r₂
-    δr₀ = norm(δr)
-    δv = v₁ - v₂
-    z = LinearAlgebra.cross(δr, δv)
 
-    # ! Relative encounter frame
-    nδv = normalize(δv)
-    nz  = normalize(z)
-
-    Cp = combinecov(RIC2ECI3x3(Σ₁, r₁, v₁), RIC2ECI3x3(Σ₂, r₂, v₂), nδv, nz)
+    Cp, δr₀ = RIC_to_2D(r₁, v₁, Σ₁, r₂, v₂, Σ₂)
     Up = revchol(Cp)
     Uv = SVector{3,T}(
         7.071067811865475244008443621048490392848359376884740365883398689953662392310596e-01/Up[1],
@@ -112,16 +179,7 @@ function pc2dfoster_RIC(r₁::SVector{3,T}, v₁::SVector{3,T}, Σ₁::Symmetric
 
 end
 
-@inline function combinecov(Σ₁, Σ₂, y, z)
-    Σ = Σ₁ + Σ₂
-    x = LinearAlgebra.cross(y, z)
-    a = Σ * x
-    SymmetricM2(
-        a' * x,
-        a' * z,
-        quadform(z, Σ)
-    )
-end
+
 
 
 #

@@ -241,6 +241,16 @@ function chol(S::SymmetricM3)
         )
     end
 end
+function chol(S::SymmetricM2)
+    @fastmath @inbounds begin
+        U11 = sqrt(S[1])
+        U12 = S[2] / U11
+        U22 = sqrt(S[3] - U12*U12)
+        UpperTriangle2(
+            U11, U12, U22
+        )
+    end
+end
 
 @generated function Base.:*(A::SMatrix{M,N,T}, B::SMatrix{N,P,T}) where {M,N,P,T}
     outtup = Vector{Expr}(undef, M*P)

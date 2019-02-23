@@ -32,7 +32,7 @@ Base.size(g::Groups{NG}) where NG = size(g.groups)
             vu = SIMDPirates.vmul(vload($Vf, unifs, n), $vp_NG)
             vg = $vg_NG
             @nexprs $(NG-1) g -> vg = vifelse( SIMDPirates.vless(vu, vp_{$NG-g}), vg_{$NG-g}, vg )
-            vstore(vg, pg - 1 + n)
+            vstore!(pg - 1 + n, vg)
         end
         for n ∈ N+1-(N % $W):N
             p_1 = probabilities[n]
@@ -69,7 +69,7 @@ end
             vu = SIMDPirates.vmul(vload($Vf, unifs, n), $vp_NG)
             vg = $vg_NG
             @nexprs $(NG-1) g -> vg = vifelse( SIMDPirates.vless(vu, vp_{$NG-g}), vg_{$NG-g}, vg )
-            vstore(vg, pg + n)
+            vstore!(pg + n, vg)
         end
         r = N % $W
         if r > 0
@@ -116,7 +116,7 @@ end
                 vu = SIMDPirates.vmul( vu, $vp_NG)
                 vg = $vg_NG
                 @nexprs $(NG-1) g -> vg = vifelse( SIMDPirates.vless(vu, vp_{$NG-g}), vg_{$NG-g}, vg )
-                vstore(vg, pg + n + (u-1)*$W)
+                vstore!(pg + n + (u-1)*$W, vg)
             end
         end
         # Requires extra space beyond the loop to be allocated.
@@ -127,7 +127,7 @@ end
             vu = SIMDPirates.vmul(vu, $vp_NG)
             vg = $vg_NG
             @nexprs $(NG-1) g -> vg = vifelse( SIMDPirates.vless(vu, vp_{$NG-g}), vg_{$NG-g}, vg )
-            vstore(vg, pg + n)
+            vstore!(pg + n, vg)
         end
     end
 end
@@ -152,7 +152,7 @@ end
                 vu = SIMDPirates.vmul((Base.Cartesian.@ntuple $W w -> @inbounds vufull[w + (u-1)*$W]), $vp_NG)
                 vg = $vg_NG
                 @nexprs $(NG-1) g -> vg = vifelse( SIMDPirates.vless(vu, vp_{$NG-g}), vg_{$NG-g}, vg )
-                vstore(vg, pg + n + (u-1)*$W)
+                vstore!(pg + n + (u-1)*$W, vg)
             end
         end
         # back tracking loop. This approach imposes a minimum sample size limit.
@@ -165,7 +165,7 @@ end
             vu = SIMDPirates.vmul(rand(rng, Vec{$W,$T}), $vp_NG)
             vg = $vg_NG
             @nexprs $(NG-1) g -> vg = vifelse( SIMDPirates.vless(vu, vp_{$NG-g}), vg_{$NG-g}, vg )
-            vstore(vg, pg + n)
+            vstore!(pg + n, vg)
         end
     end
 end
