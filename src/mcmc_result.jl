@@ -69,22 +69,25 @@ end
     end
 end
 
-@generated function sample_misses!(table::Array{SVec{W,T},3}, revcholwisharts, probs, r1, v1, r2, v2, c1, c2, ν, N) where {T,W}
+@generated function sample_misses!(table::Array{SVec{W,T},3}, revcholwisharts, probs, r1, v1, r2, v2, c1, c2, N) where {T,W}
     # W = VectorizationBase.pick_vector_width(T)
     quote
         rng = VectorizedRNG.GLOBAL_vPCG
         # Transpose U; broadcast the individual elements.
-        U = chol(c2)
+        chol_c2 = chol(c2)
         for i ∈ eachindex(probs)
             p = vbroadcast(SVec{$W, $T}, probs[i])
             c2_temp = xtx(UpperTriangle3(revcholwisharts[i]) * chol_c2)
-            Σ, δ = CovarianceRealism.RIC_to_2D(r1, v1, c1, r2, v2, c2_temp)
+            Σ, δr₀ = CovarianceRealism.RIC_to_2D(r1, v1, c1, r2, v2, c2_temp)
             U = chol(Σ)
 
             L11 = vbroadcast(SVec{$W,$T}, U[1,1])
             L21 = vbroadcast(SVec{$W,$T}, U[1,2])
             L22 = vbroadcast(SVec{$W,$T}, U[2,2])
             vδr₀ = vbroadcast(SVec{$W,$T}, δr₀)
+            ν = extract_ν(revcholwisharts[i])
+            νinv = 1/ν
+            vν = vbroadcast(SVec{$(2W),$T}, (ν < one($T) ? muladd(T(0.5),ν,one($T)) : T(0.5)*ν ))
             @inbounds for n ∈ 1:N
                 # Sampling random normals in batches of 4W is fastest on the tested architecture.
                 z1_and_2 = randn(rng, Vec{$(4W),$T})
@@ -95,15 +98,21 @@ end
                 # or equivalently
                 # z1_1 = ntuple(i -> x1_and_2[i], Val($W))
                 # So we construct the tuple explicitly here. This is fast in all versions of Julia > 1.
-                z1_1 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈    1: W]...)))
-                z1_2 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈  W+1:2W]...)))
-                z2_1 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈ 2W+1:3W]...)))
-                z2_2 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈ 3W+1:4W]...)))
+                z1_1 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈    1: W]...)))
+                z1_2 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈  W+1:2W]...)))
+                z2_1 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈ 2W+1:3W]...)))
+                z2_2 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈ 3W+1:4W]...)))
 
 
-                u1_and_2 = SIMDPirates.extract_data(randinvchisq(VectorizedRNG.GLOBAL_vPCG, vbroadcast(SVec{$(2W),$T}, ν)))
-                u1 = sqrt(SVec($(Expr(:tuple, [:(u1_and_2[$w] for w ∈   1: W)]))))
-                u2 = sqrt(SVec($(Expr(:tuple, [:(u1_and_2[$w] for w ∈ W+1:2W)]))))
+                u1_and_2 = vbroadcast(SVec{$(2W),$T}, T(0.5)) /
+                    (
+                        ν < one($T) ?
+                            SIMDPirates.evmul(SLEEF.exp(-SVec(randexp(rng, Vec{$(2W),$T}))*νinv), randgamma_g1(rng, vν)) :
+                            randgamma_g1(rng, vν)
+                    ) |> SIMDPirates.extract_data
+
+                u1 = sqrt(SVec($(Expr(:tuple, [:(u1_and_2[$w]) for w ∈   1: W]...))))
+                u2 = sqrt(SVec($(Expr(:tuple, [:(u1_and_2[$w]) for w ∈ W+1:2W]...))))
                 # Multiply Calculate L * z = x.
                 # Additrionally, scaling by u, the random chi square, to sample from the multivariate t distribution.
                 # Additionally, subtract the distance δr₀, which we treat as [δr₀, 0]
@@ -114,21 +123,22 @@ end
                 x2_2 = u2 * (L21 * z1_2 + L22 * z2_2)
 
 
-                # Calculate distance, multiply 1000 to translate from kilometers to meters.
-                δ_1 = sqrt( x1_1*x1_1 + x2_1*x2_1 ) * T(10^3)
-                δ_2 = sqrt( x1_2*x1_2 + x2_2*x2_2 ) * T(10^3)
+                # Calculate distance, multiply 1000 to translate RevCholWishartsfrom kilometers to meters.
+                δ_1 = SIMDPirates.evmul(sqrt( x1_1*x1_1 + x2_1*x2_1 ), T(10^3))
+                δ_2 = SIMDPirates.evmul(sqrt( x1_2*x1_2 + x2_2*x2_2 ), T(10^3))
                 vi = vbroadcast(SVec{$W,$T}, $T(100))
                 l_1_5 = δ_1 < vi
                 l_2_5 = δ_2 < vi
                 # Every 5 times, we check if we can break early.
-                for i ∈ 100:-5:1
-                    (any(l_1_5) || any(l_2_5)) || break
+                for i ∈ 50:-5:1
+                    ((l_1_5 === SVec($(Expr(:tuple, [:(Core.VecElement(false)) for w ∈ 1:W]...)))) && (l_2_5 === SVec($(Expr(:tuple, [:(Core.VecElement(false)) for w ∈ 1:W]...))))) && break
+                    # (any(l_1_5) || any(l_2_5)) || break
                     Base.Cartesian.@nexprs 5 j -> begin
                         vi_j = vbroadcast(SVec{$W,$T}, $T(i+1-j))
                         ti_1_j = table[1,j,i+1-j]
                         l_1_j = δ_1 < vi_j
                         ti_1_j = vifelse(l_1_j, ti_1_j + p, ti_1_j)
-                        table[2,j,i+1-j] = ti_1_j
+                        table[1,j,i+1-j] = ti_1_j
                         ti_2_j = table[2,j,i+1-j]
                         l_2_j = δ_2 < vi_j
                         ti_2_j = vifelse(l_2_j, ti_2_j + p, ti_2_j)
@@ -145,10 +155,13 @@ end
 
 
 function sample_Pc!(rng::AbstractRNG, wpc_array::WeightedSamples{T1}, res::MCMCResult{T2}, r1, v1, c1, r2, v2, c2, HBR) where {T1,T2}
-    rcws = res.RevCholWisharts
+    sample_Pc!(rng, wpc_array, res.RevCholWisharts, res.Probs, r1, v1, c1, r2, v2, c2, HBR)
+end
+
+function sample_Pc!(rng::AbstractRNG, wpc_array::WeightedSamples{T1}, rcws::ScatteredMatrix{T2,2,RevCholWishart{T2}}, probs, r1, v1, c1, r2, v2, c2, HBR) where {T1,T2}
     chol_c2 = chol(c2)
     pc_array = wpc_array.distances
-    copyto!(wpc_array.weights, res.Probs)
+    copyto!(wpc_array.weights, probs)
     for i ∈ eachindex(pc_array)
         c2_temp = xtx(randinvwishartfactor(rng, rcws[i]) * chol_c2)
         pc_array[i] = pc2dfoster_RIC(r1, v1, c1, r2, v2, c2_temp, HBR)

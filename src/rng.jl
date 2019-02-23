@@ -9,7 +9,10 @@ end
 #     α < 1 ? rand(rng, T)^(1/α) * randgamma_g1(rng, α+1) : randgamma_g1(rng, α)
 # end
 @inline function randgamma(rng::VectorizedRNG.PCG, α::SVec{W,T}) where {W,T}
-    vifelse(α < one(T), SLEEF.exp(-SVec(randexp(rng, Vec{W,T}))/α) * randgamma_g1(rng, α+one(T)), randgamma_g1(rng, α))
+    rg = randgamma_g1(rng, α)
+    any(α < one(T)) ?
+        vifelse(α < one(T), SLEEF.exp(-SVec(randexp(rng, Vec{W,T}))/α) * randgamma_g1(rng, α+one(T)), rg) : rg
+
 end
 @inline function randgamma_g1(rng::VectorizedRNG.PCG, α::SVec{W,T}) where {W,T}
     OneThird = vbroadcast(SVec{W,T},one(T)/T(3))
@@ -34,8 +37,15 @@ end
         # all(accepted) && return SIMDPirates.extract_data(dv3_out)
     end
 end
-@inline randchisq(rng::VectorizedRNG.PCG, ν::SVec{W,T}) where {W,T} = T(2.0) * randgamma(rng, T(0.5)*ν)
-@inline randinvchisq(rng::VectorizedRNG.PCG, ν::SVec{W,T}) where {W,T} = T(0.5) / (randgamma(rng, T(0.5)*ν))
+@inline function randchisq(rng::VectorizedRNG.PCG, ν::SVec{W,T}) where {W,T}
+    two = SIMDPirates.vbroadcast(SVec{W,T}, T(2))
+    half = SIMDPirates.vbroadcast(SVec{W,T}, T(0.5))
+    two * randgamma(rng, SIMDPirates.evmul(half,ν))
+end
+@inline function randinvchisq(rng::VectorizedRNG.PCG, ν::SVec{W,T}) where {W,T}
+    half = SIMDPirates.vbroadcast(SVec{W,T}, T(0.5))
+    T(0.5) / (randgamma(rng, SIMDPirates.evmul(half,ν)))
+end
 
 @inline function randgamma(rng::AbstractRNG, α::T) where T
     α < one(T) ? exp(-randexp(rng, T)/α) * randgamma_g1(rng, α+one(T)) : randgamma_g1(rng, α)

@@ -59,7 +59,7 @@ and the avx512f instruction set (512 bit), W will be 16.
     quote
         rng = VectorizedRNG.GLOBAL_vPCG
         # Transpose U; broadcast the individual elements.
-        Σ, δ = CovarianceRealism.RIC_to_2D(r1, v1, c1, r2, v2, c2)
+        Σ, δr₀ = CovarianceRealism.RIC_to_2D(r1, v1, c1, r2, v2, c2)
         U = chol(Σ)
 
         L11 = vbroadcast(SVec{$W,$T}, U[1,1])
@@ -76,10 +76,10 @@ and the avx512f instruction set (512 bit), W will be 16.
             # or equivalently
             # z1_1 = ntuple(i -> x1_and_2[i], Val($W))
             # So we construct the tuple explicitly here. This is fast in all versions of Julia > 1.
-            z1_1 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈    1: W]...)))
-            z1_2 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈  W+1:2W]...)))
-            z2_1 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈ 2W+1:3W]...)))
-            z2_2 = SVec($(Expr(:tuple, [:(x1_and_2[$w]) for w ∈ 3W+1:4W]...)))
+            z1_1 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈    1: W]...)))
+            z1_2 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈  W+1:2W]...)))
+            z2_1 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈ 2W+1:3W]...)))
+            z2_2 = SVec($(Expr(:tuple, [:(z1_and_2[$w]) for w ∈ 3W+1:4W]...)))
 
             # Multiply Calculate L * z = x.
             # Additionally, subtract the distance δr₀, which we treat as [δr₀, 0]
@@ -93,17 +93,18 @@ and the avx512f instruction set (512 bit), W will be 16.
             δ_1 = sqrt( x1_1*x1_1 + x2_1*x2_1 ) * T(10^3)
             δ_2 = sqrt( x1_2*x1_2 + x2_2*x2_2 ) * T(10^3)
             vi = vbroadcast(SVec{$W,$T}, $T(100))
-            l_1 = δ_1 < vi
-            l_2 = δ_2 < vi
+            l_1_5 = δ_1 < vi
+            l_2_5 = δ_2 < vi
             # Every 5 times, we check if we can break early.
-            for i ∈ 100:-5:1
-                (any(l_1_5) || any(l_2_5)) || break
+            for i ∈ 50:-5:1
+                ((l_1_5 === SVec($(Expr(:tuple, [:(Core.VecElement(false)) for w ∈ 1:W]...)))) && (l_2_5 === SVec($(Expr(:tuple, [:(Core.VecElement(false)) for w ∈ 1:W]...))))) && break
+                # (any(l_1_5) || any(l_2_5)) || break
                 Base.Cartesian.@nexprs 5 j -> begin
                     vi_j = vbroadcast(SVec{$W,$T}, $T(i+1-j))
                     ti_1_j = table[1,j,i+1-j]
                     l_1_j = δ_1 < vi_j
                     ti_1_j = vifelse(l_1_j, ti_1_j + vbroadcast(SVec{W,T},one(T)), ti_1_j)
-                    table[2,j,i+1-j] = ti_1_j
+                    table[1,j,i+1-j] = ti_1_j
                     ti_2_j = table[2,j,i+1-j]
                     l_2_j = δ_2 < vi_j
                     ti_2_j = vifelse(l_2_j, ti_2_j + vbroadcast(SVec{W,T},one(T)), ti_2_j)
