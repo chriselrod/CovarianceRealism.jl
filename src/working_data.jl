@@ -52,3 +52,4 @@ function WorkDataChains(N, ::Type{T}, ::Val{NG}, chains) where {T,NG}
     end
     workdatachains
 end
+

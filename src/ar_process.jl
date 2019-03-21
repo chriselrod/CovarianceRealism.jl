@@ -605,22 +605,31 @@ function decorrelate_data!(icc::InvCholCovar{T,B,P}, X::AbstractMatrix, t) where
     fill_δt!(icc.δt, t, Val(B))
     for m ∈ 1:M
         # icc.x .= @view X[:,m]
-        copyto!(icc.x, @view(X[:,m]))
+        stdx = std(@view(X[:,m]))
+        invstdx = 1 / stdx
+        @inbounds @simd ivdep for i in 1:size(X,1)
+            icc.x[i] = X[i,m] * invstdx
+        end
         DifferentiableObjects.optimize_scale!(icc.state, icc, icc.initial_x, icc.ls, T(10), 1e-3)
-        copyto!(@view(X[:,m]), icc.y.data)
+        @inbounds @simd ivdep for i in 1:size(X,1)
+            X[i,m] = icc.y.data[i] * stdx
+        end
     end
 end
 function decorrelate_data!(icc::InvCholCovar{T,B,P}, X::AbstractVector, t) where {T,B,P}
     N = length(X)
     resize!(icc, N)
     fill_δt!(icc.δt, t, Val(B))
+    stdx = std(X)
+    invstdx = 1 / stdx
     if isa(X, Vector{T})
         icc.x = X
+        icc.x .*= invstdx
     else
-        icc.x .= X
+        icc.x .= X .* invstdx
     end
     DifferentiableObjects.optimize_scale!(icc.state, icc, icc.initial_x, icc.ls, T(10), 1e-3)
-    X .= icc.y.data
+    X .= icc.y.data .* stdx
 end
 
 
