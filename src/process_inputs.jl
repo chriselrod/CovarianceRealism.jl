@@ -94,7 +94,7 @@ end
             x3 = BPP[i,3]
 
             R11 = rsqrt(BPP[i,5])
-            R11x1 = SIMDPirates.evmul(R11, x1)
+            R11x1 = R11 * x1
             L21 = R11 * BPP[i,6]
             L31 = R11 * BPP[i,8]
             R22 = rsqrt(BPP[i,7] - L21*L21)
