@@ -1,6 +1,7 @@
 module CovarianceRealism
 
-using   SIMDPirates, SLEEFPirates, LoopVectorization,
+using   SIMDPirates, SLEEFPirates, SLEEFwrap,
+        LoopVectorization,
         StaticArrays,# BandedMatrices,
         Random,
         Distributions,

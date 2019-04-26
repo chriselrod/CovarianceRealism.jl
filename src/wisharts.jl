@@ -22,6 +22,13 @@ const WishartFactor{T} = Union{CholInvWishart{T},RevCholWishart{T}}
 #     end
 # end
 
+@inline function LinearAlgebra.logdet(l::Union{CholInvWishart{T},RevCholWishart{T}}) where {T}
+    @inbounds SLEEFPirates.log(l[1] * l[4] * l[6])
+end
+@inline function logdetw(l::Union{CholInvWishart{T},RevCholWishart{T}}) where {T}
+    @inbounds SLEEFwrap.log(l[1] * l[4] * l[6])
+end
+
 
 @inline function CholInvWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
     x_7 = x_8 = one(T)
@@ -43,6 +50,11 @@ end
 end
 @inline function RevCholWishart{T}(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T,x_7::T,x_8::T) where T
     RevCholWishart{T}((Base.Cartesian.@ntuple 8 x))
+end
+@inline function RevCholWishart{T1}(
+            x_1::SVec{W,T},x_2::SVec{W,T},x_3::SVec{W,T},x_4::SVec{W,T},x_5::SVec{W,T},x_6::SVec{W,T},x_7::SVec{W,T},x_8::SVec{W,T}
+        ) where {W,T,T1}
+    RevCholWishart{SVec{W,T}}((Base.Cartesian.@ntuple 8 x))
 end
 @inline function RevCholWishart(x_1::T,x_2::T,x_3::T,x_4::T,x_5::T,x_6::T) where T
     x_7 = x_8 = one(T)
@@ -108,7 +120,14 @@ end
 @inline function Base.:+(a::W, b::W) where W <: Wishart3x3
     W(SIMDPirates.vadd(a.data, b.data))
 end
-@inline function Base.:*(L::WishartFactor{T}, x::SVector{3,T}) where T
+@inline function Base.:*(L::WishartFactor{T}, x::SVector{3,T}) where {T}
+    @fastmath @inbounds SVector(
+        L[1]*x[1],
+        L[2]*x[1] + L[4]*x[2],
+        L[3]*x[1] + L[5]*x[2] + L[6]*x[3]
+    )
+end
+@inline function Base.:*(L::WishartFactor{SVec{W,T}}, x::SVector{3,T}) where {W,T}
     @fastmath @inbounds SVector(
         L[1]*x[1],
         L[2]*x[1] + L[4]*x[2],
@@ -164,6 +183,13 @@ end
     end
 end
 
+@inline function finite_sqrt(x::T, min_value = eps(T)) where {T}
+    rx = @fastmath sqrt(x)
+    # min_value = eps(T)
+    # min_value = T(0.005) # 5
+    isfinite(rx) ? rx : min_value
+end
+
 # @inline
 function inv_and_cholesky!(riwv::AbstractVector{RevCholWishart{T}},
                                     ciwv::AbstractVector{CholInvWishart{T}},
@@ -172,14 +198,15 @@ function inv_and_cholesky!(riwv::AbstractVector{RevCholWishart{T}},
     @inbounds for i ∈ eachindex(iwv)
         iw = iwv[i]
         @fastmath begin
-            L11 = sqrt(iw[1])
+            min_value = T(0.05) * sqrt(iw[7] - 2)
+            L11 = finite_sqrt(iw[1], min_value)
             R11 = 1 / L11
             L21 = R11 * iw[2]
             L31 = R11 * iw[3]
-            L22 = sqrt(iw[4] - L21^2)
+            L22 = finite_sqrt(iw[4] - L21^2, min_value)
             R22 = 1 / L22
             L32 = R22 * (iw[5] - L21 * L31)
-            L33 = sqrt(iw[6] - L31^2 - L32^2)
+            L33 = finite_sqrt(iw[6] - L31^2 - L32^2, min_value)
             R33 = 1 / L33
 
             R21 = - R22 * L21 * R11

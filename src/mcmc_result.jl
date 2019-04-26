@@ -1,4 +1,4 @@
-struct MCMCResult{T}
+struct MCMCResult{T} #<: Distributions.ContinuousUnivariateDistribution
     Probs::Matrix{T}
     RevCholWisharts::ScatteredMatrix{T,2,RevCholWishart{T}}
     CholInvWisharts::ScatteredMatrix{T,2,CholInvWishart{T}}
@@ -34,21 +34,79 @@ function Base.cat(a::MCMCResult{T}, b::MCMCResult{T}, iter) where T
     )
 end
 
+@generated function Distributions.logpdf(res::MCMCResult{T}, x::SVector{3}) where {T}
+    # W, Wshift = VectorizationBase.pick_vector_width_shift(T)
+    # V = SVec{W,T}
+    quote
+        probs = res.Probs
+        rcw = res.RevCholWisharts
+        N = length(probs)
+        # vrcw = vectorizable(rcw)
+        # vprobs = vectorizable(probs)
+        p = zero(Float64)
+        @vectorize Float64 for n ∈ 1:N
+            vRCW = rcw[n]
+            vRCWx = vRCW * x
+            lkernel = SLEEFwrap.log(1.0 + (vRCWx' * vRCWx))
+            ld = logdetw(vRCW)
+            ν = extract_ν(vRCW)
+            nexponent = 0.5 * ν + 1.5
+            base = SLEEFwrap.log(probs[n]) + ld + SLEEFwrap.lgamma(nexponent) - SLEEFwrap.lgamma(0.5ν) - 1.5*SLEEFwrap.log(ν)
+
+            p += SLEEFwrap.exp(base - nexponent * lkernel)
+        end
+        # log(p) - log($T(size(probs,2))) - $(T(1.5log(π)))
+        log(p) - log(size(probs,2)) - $(1.5log(π))
+    end
+end
+@generated function logpdf2(res::MCMCResult{T}, x::SVector{3}) where {T}
+    # W, Wshift = VectorizationBase.pick_vector_width_shift(T)
+    # V = SVec{W,T}
+    quote
+        probs = res.Probs
+        rcw = res.RevCholWisharts
+        N = length(probs)
+        # vrcw = vectorizable(rcw)
+        # vprobs = vectorizable(probs)
+        p = zero(Float64)
+        for n ∈ 1:N
+            rcw32 = rcw[n]
+            vRCW = RevCholWishart{Float64}(Float64.(rcw32.data))
+            vRCWx = vRCW * x
+            lkernel = log(1.0 + (vRCWx' * vRCWx))
+            ld = logdetw(vRCW)
+            ν = extract_ν(vRCW)
+            nexponent = 0.5 * ν + 1.5
+            base = log(Float64(probs[n])) + ld + lgamma(nexponent) - lgamma(0.5ν) - 1.5*log(ν)
+
+            pn = exp(base - nexponent * lkernel)
+            # @show pn
+            p += pn
+
+        end
+        # log(p) - log($T(size(probs,2))) - $(T(1.5log(π)))
+        log(p) - log(size(probs,2)) - $(1.5log(π))
+    end
+end
+
 
 @generated function Random.randn(rng::AbstractRNG, ::Type{SVec{W,T}}) where {W,T}
     :(SVec(@ntuple $W w -> VE(randn(rng, $T))))
 end
 
-@generated function sample_distances!(rng::AbstractRNG, wdistances::WeightedSamples{T}, res::MCMCResult{T}) where T
+@generated function sample_distances!(rng::AbstractRNG, wdistances::WeightedSamples{T}, res::MCMCResult{T}) where {T}
     W = 2*VectorizationBase.pick_vector_width(T)
     V = SVec{W,T}
     quote
+        # @show $V
         # ciw = res.CholInvWisharts
         copyto!(wdistances.weights, res.Probs)
-        distances = wdistances.distances
         ciw = res.CholInvWisharts
+        distances = wdistances.distances
+        # ciw = res.CholInvWisharts
         N = length(distances)
         vciw = vectorizable(ciw)
+        # @show typeof(ciw), typeof(vciw)
         ptr_distances = vectorizable(distances)
         for n ∈ 1:($W):N+$(1-W)
             vZ = SVector{3}(randn(rng, $V),randn(rng, $V),randn(rng, $V))

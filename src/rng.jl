@@ -51,6 +51,7 @@ end
     α < one(T) ? exp(-randexp(rng, T)/α) * randgamma_g1(rng, α+one(T)) : randgamma_g1(rng, α)
 end
 @inline function randgamma_g1(rng::AbstractRNG, α::T) where {T}
+    # @show α
     OneThird = one(T)/T(3)
     d = α - OneThird
     @fastmath c = OneThird / sqrt(d)

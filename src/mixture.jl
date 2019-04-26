@@ -138,3 +138,19 @@ function sample_Pc(rng::AbstractRNG, res::MixtureResults{P,T}, r1, v1, c1, r2, v
         SVector{P,T2}(ntuple(p -> pc2dfoster_RIC(r1, v1, c1, r2, v2, c2 * abs2(res.scale_factors[p]), HBR), Val(P)))
     )
 end
+
+
+function Distributions.logpdf(res::MixtureResults{P,T}, x::SVector{3}) where {P,T}
+    probs = res.probs
+    scale_factors = res.scale_factors
+
+    m = T(-0.5)*(x' * x)
+    ms = zero(T)
+    @inbounds @fastmath @simd for p ∈ 1:P
+        s = scale_factors[p]
+        ms += probs[p] * SLEEFwrap.exp( m / s^2 - T(3)*SLEEFwrap.log(s) )
+    end
+    # log(ms) - T(1.5log(2π))
+    log(ms) - 1.5log(2π)
+end
+

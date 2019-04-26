@@ -57,3 +57,14 @@ function sample_Pc!(rng::AbstractRNG, pc_array::UniformSamples, res::PercentileM
     end
     pc_array
 end
+
+function Distributions.logpdf(res::PercentileMatch{T}, x::SVector{3}) where {T}
+    N = length(res)
+    m = T(-0.5)*(x' * x)
+    ms = zero(T)
+    @fastmath @simd for s ∈ res.scale_factors
+        ms += SLEEFwrap.exp( m / s^2 - T(3)*SLEEFwrap.log(s) )
+    end
+    # log(ms) - T(log(N)) - T(1.5log(2π))
+    log(ms) - log(N) - 1.5log(2π)
+end

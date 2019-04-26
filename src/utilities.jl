@@ -9,9 +9,9 @@ end
 @inline Base.length(rm::ResizableMatrix) = length(rm.data)
 @inline Base.getindex(rm::ResizableMatrix, i::Integer) = rm.data[i]
 @inline Base.getindex(rm::ResizableMatrix, I::CartesianIndex{2}) = rm.data[I[1] + (I[2]-1)*rm.nrows[]]
-@inline Base.getindex(rm::ResizableMatrix, i, j) = rm.data[ i + (j-1)*rm.nrows[] ]
+@inline Base.getindex(rm::ResizableMatrix, i::Integer, j::Integer) = rm.data[ i + (j-1)*rm.nrows[] ]
 @inline Base.setindex!(rm::ResizableMatrix, v, i) = rm.data[i] = v
-@inline Base.setindex!(rm::ResizableMatrix, v, i, j) = rm.data[i + (j-1)*rm.nrows[]] = v
+@inline Base.setindex!(rm::ResizableMatrix, v, i::Integer, j::Integer) = rm.data[i + (j-1)*rm.nrows[]] = v
 @inline Base.pointer(rm::ResizableMatrix) = pointer(rm.data)
 @inline Base.pointer(rm::ResizableMatrix, i::Integer) = pointer(rm.data, i)
 Base.resize!(rm::ResizableMatrix{T,NC}, N) where {T,NC} = (rm.nrows[] = N; resize!(rm.data, NC*N))
