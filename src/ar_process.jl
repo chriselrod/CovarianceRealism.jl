@@ -193,7 +193,7 @@ end
 
 Base.IndexStyle(::Type{<:DualVector}) = IndexLinear()
 
-function self_dot(v::AbstractVector{T}) where T
+function self_dot(v::AbstractVector{T}) where {T}
     out = zero(eltype(v))
     @inbounds @simd for i ∈ eachindex(v)
         out += v[i] * v[i]
@@ -523,15 +523,15 @@ end
 end
 
 
-mutable struct InvCholCovar{T,B,P,R,L,O} <: DifferentiableObjects.DifferentiableObject{P}
+mutable struct InvCholCovar{T,B,P,R,L,O} <: DifferentiableObjects.AbstractDifferentiableObject{P,T}
     bandmat::DualBandMatrix{T,B,P}
     y::DualVector{T,P}
     x::Vector{T}
     δt::Vector{T}
-    state::DifferentiableObjects.BFGSState2{P,T,R,L}
-    initial_x::SizedSIMDArray{Tuple{P},T,1,R,R}
+    state::DifferentiableObjects.BFGSState{P,T,R,L}
+    initial_x::PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}
     ls::DifferentiableObjects.BackTracking2{O,T,Int}
-    ∇::SizedSIMDArray{Tuple{P},T,1,R,R}
+    ∇::PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}
 end
 
 @generated function InvCholCovar{T,B}(N::Integer) where {T,B}
@@ -542,10 +542,10 @@ end
             DualVector{$T,$P}(undef, N),
             Vector{$T}(undef, $B*N),
             Vector{$T}(undef, $B*N),
-            DifferentiableObjects.BFGSState2(Val($P), $T),
-            fill(SizedSIMDVector{$P,$T}, zero($T)),
+            DifferentiableObjects.BFGSState(Val($P), $T),
+            fill!(PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef), zero($T)),
             DifferentiableObjects.BackTracking2{$T}(Val(2)),
-            SizedSIMDVector{$P,$T}(undef)
+            PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef)
         )
     end
 end
@@ -558,10 +558,10 @@ end
             DualVector{$T,$P}(undef, N),
             x,
             Vector{$T}(undef, $B*N),
-            DifferentiableObjects.BFGSState2(Val($P), $T),
-            fill(SizedSIMDVector{$P,$T}, zero($T)),
+            DifferentiableObjects.BFGSState(Val($P), $T),
+            fill!(PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef), zero($T)),
             DifferentiableObjects.BackTracking2{$T}(Val(2)),
-            SizedSIMDVector{$P,$T}(undef)
+            PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef)
         )
     end
 end
@@ -580,7 +580,7 @@ function Base.resize!(icc::InvCholCovar{T,B,P}, N) where {T,B,P}
 end
 
 
-function fit!(icc::InvCholCovar{T}) where T
+function fit!(icc::InvCholCovar{T}) where {T}
     DifferentiableObjects.optimize_scale!(icc.state, icc, icc.initial_x, icc.ls, T(10), T(1e-3))
 end
 
@@ -604,16 +604,27 @@ function decorrelate_data!(icc::InvCholCovar{T,B,P}, X::AbstractMatrix, t) where
     resize!(icc, N)
     fill_δt!(icc.δt, t, Val(B))
     for m ∈ 1:M
+        allfinite = false
+        for i ∈ 1:100
         # icc.x .= @view X[:,m]
-        stdx = std(@view(X[:,m]))
-        invstdx = 1 / stdx
-        @inbounds @simd ivdep for i in 1:size(X,1)
-            icc.x[i] = X[i,m] * invstdx
+            stdx = std(@view(X[:,m]))
+            invstdx = 1 / stdx
+            @inbounds @simd ivdep for i in 1:size(X,1)
+                icc.x[i] = X[i,m] * invstdx
+            end
+            DifferentiableObjects.optimize_scale!(icc.state, icc, icc.initial_x, icc.ls, T(10), 1e-3)
+            allfinite = all(isfinite, icc.y.data)
+            if !allfinite
+                Random.randn!(icc.initial_x)
+                continue
+            end
+            @inbounds @simd ivdep for i in 1:size(X,1)
+                X[i,m] = icc.y.data[i] * stdx
+            end
+            icc.initial_x .= zero(T)
+            break
         end
-        DifferentiableObjects.optimize_scale!(icc.state, icc, icc.initial_x, icc.ls, T(10), 1e-3)
-        @inbounds @simd ivdep for i in 1:size(X,1)
-            X[i,m] = icc.y.data[i] * stdx
-        end
+        allfinite || throw("Not all finite after 100 attempts.")
     end
 end
 function decorrelate_data!(icc::InvCholCovar{T,B,P}, X::AbstractVector, t) where {T,B,P}
@@ -741,15 +752,19 @@ end
     end
 end
 
-function DifferentiableObjects.scale_fdf(icc::InvCholCovar{T}, θ::AbstractVector{T}, scale_target) where T
+function DifferentiableObjects.scale_fdf(icc::InvCholCovar{T}, θ::AbstractVector{T}, scale_target) where {T}
     fval = DifferentiableObjects.fdf(icc, θ)
     scale = min(one(T), scale_target / norm(icc.∇))
-    SIMDArrays.scale!(icc.∇, scale)
+    @inbounds @simd for i ∈ eachindex(icc.∇)
+        icc.∇[i] *= scale
+    end
     fval * scale, scale
 end
-function DifferentiableObjects.scaled_fdf(icc::InvCholCovar{T}, θ::AbstractVector{T}, scale) where T
+function DifferentiableObjects.scaled_fdf(icc::InvCholCovar{T}, θ::AbstractVector{T}, scale) where {T}
     fval = DifferentiableObjects.fdf(icc, θ)
-    SIMDArrays.scale!(icc.∇, scale)
+    @inbounds @simd for i ∈ eachindex(icc.∇)
+        icc.∇[i] *= scale
+    end
     fval * scale
 end
 DifferentiableObjects.gradient(icc::InvCholCovar) = icc.∇

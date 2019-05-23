@@ -11,7 +11,7 @@ end
 @inline function randgamma(rng::VectorizedRNG.PCG, α::SVec{W,T}) where {W,T}
     rg = randgamma_g1(rng, α)
     any(α < one(T)) ?
-        vifelse(α < one(T), SLEEF.exp(-SVec(randexp(rng, Vec{W,T}))/α) * randgamma_g1(rng, α+one(T)), rg) : rg
+        vifelse(α < one(T), SLEEFwrap.exp(-SVec(randexp(rng, Vec{W,T}))/α) * randgamma_g1(rng, α+one(T)), rg) : rg
 
 end
 @inline function randgamma_g1(rng::VectorizedRNG.PCG, α::SVec{W,T}) where {W,T}
@@ -27,7 +27,7 @@ end
         # v > zero(T) || continue
         v3 = v * v * v
         dv3 = SIMDPirates.evmul(d,v3)
-        mask2 = SVec(randexp(rng, Vec{W,T})) > T(-0.5)*x*x - d + dv3 - d*SLEEF.log_fast(v3)
+        mask2 = SVec(randexp(rng, Vec{W,T})) > T(-0.5)*x*x - d + dv3 - d*SLEEFwrap.log_fast(v3)
         mask3 = mask1 & mask2
         not_accepted = !accepted
         # not_accepted = SIMDPirates.vnot(accepted)

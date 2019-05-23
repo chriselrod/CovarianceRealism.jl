@@ -14,9 +14,9 @@ using   SIMDPirates, SLEEFPirates, SLEEFwrap,
         VectorizationBase,
         KernelDensityDistributionEsimates, KernelDensity,
         RandomNumbers, VectorizedRNG,
-        SIMDArrays, DifferentiableObjects,
+        DifferentiableObjects,
         ForwardDiff,
-        SIMDArrays,
+        PaddedMatrices,
         Base.Threads
         # Gadfly # plotting
 
