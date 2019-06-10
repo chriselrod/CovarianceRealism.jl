@@ -38,6 +38,9 @@ export  process_BPP!,
         InvCholCovar,
         sample_Pc!
 
+using PaddedMatrices: MutableFixedSizePaddedVector,
+    MutableFixedSizePaddedMatrix
+
 # RandomNumbers.jl exports an AbstractRNG{T} that is a subset of AbstractRNG.
 # We want our AbstractRNGs to refer to the more general Random.AbstractRNG.
 import Random: AbstractRNG
