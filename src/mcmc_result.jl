@@ -221,8 +221,18 @@ function sample_Pc!(rng::AbstractRNG, wpc_array::WeightedSamples{T1}, rcws::Scat
     pc_array = wpc_array.distances
     copyto!(wpc_array.weights, probs)
     for i ∈ eachindex(pc_array)
-        c2_temp = xtx(randinvwishartfactor(rng, rcws[i]) * chol_c2)
+        rcws64 = RevCholWishart{Float64}(Float64.(rcws[i].data))
+        c2_temp = xtx(randinvwishartfactor(rng, rcws64) * chol_c2)
         pc_array[i] = pc2dfoster_RIC(r1, v1, c1, r2, v2, c2_temp, HBR)
     end
     wpc_array
+end
+function sample_Pc!(rng::AbstractRNG, pc_array::AbstractVector{T1}, rcws::ScatteredMatrix{T2,2,RevCholWishart{T2}}, r1, v1, c1, r2, v2, c2, HBR) where {T1,T2}
+    chol_c2 = chol(c2)
+    for i ∈ eachindex(pc_array)
+        rcws64 = RevCholWishart{Float64}(Float64.(rcws[i].data))
+        c2_temp = xtx(randinvwishartfactor(rng, rcws64) * chol_c2)
+        pc_array[i] = pc2dfoster_RIC(r1, v1, c1, r2, v2, c2_temp, HBR)
+    end
+    pc_array
 end

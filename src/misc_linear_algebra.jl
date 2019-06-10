@@ -209,43 +209,43 @@ function Base.inv(U::UpperTriangle3)
     UpperTriangle3( t11, t12, t22, t13, t23, t33 )
 end
 
-function revchol(S::SymmetricM2)
+function revchol(S::SymmetricM2{T}) where {T}
     @fastmath @inbounds begin
-        ru22 = sqrt(S[3])
+        ru22 = finite_sqrt(S[3], T(1e-4))
         ru12 = S[2] / ru22
-        ru11 = sqrt(S[1] - ru12^2)
+        ru11 = finite_sqrt(S[1] - ru12^2, T(1e-4))
     end
     UpperTriangle2( ru11, ru12, ru22 )
 end
-function revchol(S::SymmetricM3)
+function revchol(S::SymmetricM3{T}) where {T}
     @fastmath @inbounds begin
-        ru33 = sqrt(S[6])
+        ru33 = finite_sqrt(S[6], T(1e-4))
         ru13 = S[4] / ru33
         ru23 = S[5] / ru33
-        ru22 = sqrt(S[3] - ru23^2)
+        ru22 = finite_sqrt(S[3] - ru23^2, T(1e-4))
         ru12 = (S[2] - ru13*ru23) / ru22
-        ru11 = sqrt(S[1] - ru12^2 - ru13^2)
+        ru11 = finite_sqrt(S[1] - ru12^2 - ru13^2, T(1e-4))
     end
     UpperTriangle3( ru11, ru12, ru22, ru13, ru23, ru33 )
 end
-function chol(S::SymmetricM3)
+function chol(S::SymmetricM3{T}) where {T}
     @fastmath @inbounds begin
-        U11 = sqrt(S[1])
+        U11 = finite_sqrt(S[1], T(1e-4))
         U12 = S[2] / U11
         U13 = S[4] / U11
-        U22 = sqrt(S[3] - U12*U12)
+        U22 = finite_sqrt(S[3] - U12*U12, T(1e-4))
         U23 = (S[5] - U12*U13) / U22
-        U33 = sqrt(S[6] - U13*U13 - U23*U23)
+        U33 = finite_sqrt(S[6] - U13*U13 - U23*U23, T(1e-4))
         UpperTriangle3(
             U11, U12, U22, U13, U23, U33
         )
     end
 end
-function chol(S::SymmetricM2)
+function chol(S::SymmetricM2{T}) where {T}
     @fastmath @inbounds begin
-        U11 = sqrt(S[1])
+        U11 = finite_sqrt(S[1], T(1e-4))
         U12 = S[2] / U11
-        U22 = sqrt(S[3] - U12*U12)
+        U22 = finite_sqrt(S[3] - U12*U12, T(1e-4))
         UpperTriangle2(
             U11, U12, U22
         )

@@ -35,7 +35,7 @@ function sample_distances!(rng::AbstractRNG, d::UniformSamples, res::PercentileM
 end
 sample_distances!(d::UniformSamples, res::PercentileMatch) = sample_distances!(Random.GLOBAL_RNG, d, res)
 
-function sample_Pc!(rng::AbstractRNG, pc_array, res::PercentileMatch, conj, n::Int)
+function sample_Pc!(rng::AbstractRNG, pc_array::AbstractArray, res::AbstractVector, conj, n::Int)
     c1 = SymmetricM3(conj[n,73],conj[n,74],conj[n,79],conj[n,75],conj[n,80],conj[n,84]) / 1e6
     c2 = SymmetricM3(conj[n,133],conj[n,124],conj[n,139],conj[n,135],conj[n,140],conj[n,144]) / 1e6
 
@@ -51,9 +51,10 @@ function sample_Pc!(rng::AbstractRNG, pc_array, res::PercentileMatch, conj, n::I
 end
 
 
-function sample_Pc!(rng::AbstractRNG, pc_array::UniformSamples, res::PercentileMatch, r1, v1, c1, r2, v2, c2, HBR)
-    @inbounds for i ∈ eachindex(pc_array)
-        pc_array[i] = pc2dfoster_RIC(r1, v1, c1, r2, v2, c2 * rand(rng, res)^2, HBR)
+function sample_Pc!(rng::AbstractRNG, pc_array::AbstractArray, res::AbstractVector, r1, v1, c1, r2, v2, c2, HBR)
+    resize!(pc_array, length(res))
+    @inbounds for i ∈ eachindex(pc_array,res)
+        pc_array[i] = pc2dfoster_RIC(r1, v1, c1, r2, v2, c2 * (res[i])^2, HBR)
     end
     pc_array
 end

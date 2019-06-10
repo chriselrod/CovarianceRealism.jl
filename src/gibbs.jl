@@ -1,13 +1,4 @@
 
-# @inline function update_probabilities!(rng::AbstractRNG, probabilities, α)
-#     probs = randdirichlet(rng, α)
-#     @inbounds for i ∈ eachindex(probs)
-#         probabilities[i] = probs[i]
-#     end
-# end
-# @inline
-
-
 function dirichlet!(rng::AbstractRNG, probabilities::AbstractVector{T}, α::NTuple{N,T}) where {N,T}
     cumulative_γ = zero(eltype(α))
     @inbounds for i ∈ eachindex(α)
@@ -20,15 +11,6 @@ function dirichlet!(rng::AbstractRNG, probabilities::AbstractVector{T}, α::NTup
         probabilities[i] *= inv_cumulative_γ
     end
 end
-# @generated function update_probabilities!(rng::AbstractRNG, probabilities, α::NTuple{N,T}) where {N,T}
-#     quote
-#         # $(Expr(:meta,:inline))
-#         Base.Cartesian.@nexprs $N n -> γ_n = @inbounds randgamma(rng, α[n])
-#         inv_γ_sum = one($T) / ($(Expr(:call, :+, [Symbol(:γ_, n) for n ∈ 1:N]...)))
-#         Base.Cartesian.@nexprs $N n -> @inbounds probabilities[n] = γ_n * inv_γ_sum
-#         nothing
-#     end
-# end
 
 @inline update_probabilities!(probabilities, α) = update_probabilities!(Random.GLOBAL_RNG, probabilities, α)
 
@@ -329,3 +311,4 @@ function thread_sample!(mcmcres, X, rank1covs, workingdatachains, BPP, baseπ, i
     end
 
 end
+

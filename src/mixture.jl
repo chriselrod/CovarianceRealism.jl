@@ -138,6 +138,21 @@ function sample_Pc(rng::AbstractRNG, res::MixtureResults{P,T}, r1, v1, c1, r2, v
         SVector{P,T2}(ntuple(p -> pc2dfoster_RIC(r1, v1, c1, r2, v2, c2 * abs2(res.scale_factors[p]), HBR), Val(P)))
     )
 end
+function calc_Pc(rng, res::AbstractMatrix{T1}, r1, v1, c1, r2, v2, c2, HBR::T2) where {T1,T2}
+    T = promote_type(T1,T2)
+    Pc = zero(T)
+    # column 1 must be of probs
+    # column 2 must be of scale factors
+    for i ∈ 1:size(res,2)
+        p = res[i,1]
+        s = res[i,2]
+        ### Perhaps do a safer check?
+        ### Throw an error, or provide a warning?
+        (isfinite(p) && isfinite(s)) || continue
+        Pc = muladd(pc2dfoster_RIC(r1,v1,c1,r2,v2,c2 * s^2, HBR), p, Pc)
+    end
+    Pc
+end
 
 
 function Distributions.logpdf(res::MixtureResults{P,T}, x::SVector{3}) where {P,T}
