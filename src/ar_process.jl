@@ -543,9 +543,9 @@ end
             Vector{$T}(undef, $B*N),
             Vector{$T}(undef, $B*N),
             DifferentiableObjects.BFGSState(Val($P), $T),
-            fill!(PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef), zero($T)),
+            fill!(PaddedMatrices.MutableFixedSizePaddedVector{$P,$T}(undef), zero($T)),
             DifferentiableObjects.BackTracking2{$T}(Val(2)),
-            PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef)
+            PaddedMatrices.MutableFixedSizePaddedVector{$P,$T}(undef)
         )
     end
 end

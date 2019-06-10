@@ -33,7 +33,7 @@ end
 @inline Χ₃_pdf(x) = (x² = x^2; x² * exp(-x²/2)) #/ sqrt(2π)
 
 
-@generated function (d::MahalanobisDistances)(x::PaddedMatrices.MutableFixedSizePaddedVector{TwoPp1,T}) where {T,TwoPp1}
+@generated function (d::MahalanobisDistances)(x::PaddedMatrices.AbstractMutableFixedSizePaddedVector{TwoPp1,T}) where {T,TwoPp1}
     P, R = divrem(TwoPp1,2)
     R == 1 || throw("Only odd dimensions supported; probability is vector presented as 1 less.")
     quote
@@ -87,7 +87,7 @@ end
 @generated function initial_val(v::SVector{P}) where P
     :(vcat((@SVector zeros($(P-1))), v))
 end
-@generated function extract_values(v::Union{SVector{TwoPp1,T},PaddedMatrices.MutableFixedSizePaddedVector{TwoPp1,T}}) where {TwoPp1,T}
+@generated function extract_values(v::Union{SVector{TwoPp1,T},PaddedMatrices.AbstractFixedSizePaddedVector{TwoPp1,T}}) where {TwoPp1,T}
     P = TwoPp1 >> 1
     quote
         probs = probabilities(Simplex{$(P+1),$T,$P}(SVector{$P,$T}(@ntuple $P p -> v[p])))
@@ -100,7 +100,7 @@ function mixture_fit(mwd::MixtureWorkingData{TwoPp1, T}, sat_number, prop_point)
     for i ∈ 1:20
         opt, scale = DifferentiableObjects.optimize_scale!(mwd.state, mwd.obj, randn!(mwd.initial_x), mwd.ls, 10f0, 1f-5)
         # opt = soptimize(mahals, 0.1 * (@SVector randn(2P+1)))
-        any(isnan.(mwd.state.x_old)) && continue
+        all(isfinite, mwd.state.x_old) || continue
         return extract_values(mwd.state.x_old)
     end
     @warn "Mixture failed 20 times. Mixture scale factors `1`. Propogation point: $prop_point, Satellite number: $sat_number."
