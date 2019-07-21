@@ -254,7 +254,9 @@ end
 end
 
 @inline function UpperTriangle3(U::WishartFactor{T}) where T
-    UpperTriangle3(SVector{6}(ntuple(i -> (@inbounds U.data[i]), Val(6))))
+    @inbounds UpperTriangle3(SVector{6,T}(
+        U[1], U[2], U[4], U[3], U[5], U[6]
+    ))
 end
 
 @inline function randinvwishartfactor(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
@@ -266,9 +268,13 @@ end
     U13 = randn(rng)
     U23 = randn(rng)
     U33 = randchisq(rng, ν)
-    inv(rcwU * UpperTriangle3(
+    U =  UpperTriangle3(
         U11, U12, U22, U13, U23, U33
-    ))
+    )
+#    @show rcw
+#    @show rcwU
+#    @show U
+    inv(rcwU * U)
 end
 function randinvwishart(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
     xtx( randinvwishartfactor(rng, rcw) )

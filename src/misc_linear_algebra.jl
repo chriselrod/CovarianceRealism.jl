@@ -33,6 +33,9 @@ SymmetricM3(A...) = SymmetricM3(SVector{6}(A...))
     i > j && return 0.0
     @inbounds A.data[i + (j-1)*j ÷ 2]
 end
+function LinearAlgebra.logdet(U::UpperTriangle3)
+    log(U[1]) + log(U[3]) + log(U[6])
+end
 @inline function Base.getindex(A::AbstractSymmetric, i, j)
     i, j = minmax(i, j)
     @inbounds A.data[i + (j-1)*j ÷ 2]

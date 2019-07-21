@@ -236,3 +236,29 @@ function sample_Pc!(rng::AbstractRNG, pc_array::AbstractVector{T1}, rcws::Scatte
     end
     pc_array
 end
+# This method also calculates covariance ratios
+function sample_Pc!(rng::AbstractRNG, pc_array::AbstractMatrix{T1}, rcws::ScatteredMatrix{T2,2,RevCholWishart{T2}}, r1, v1, c1, r2, v2, c2, HBR) where {T1,T2}
+    chol_c2 = chol(c2)
+    ldc = logdet(chol_c2)
+    for i ∈ 1:size(pc_array,1)
+        # RevCholWishart is precision factor
+        rcws64 = RevCholWishart{Float64}(Float64.(rcws[i].data))
+        rw = randinvwishartfactor(rng, rcws64)
+        cov_factor = rw * chol_c2
+        c11 = cov_factor[1,1]
+        c22 = cov_factor[2,2]
+        c33 = cov_factor[3,3]
+        if !((c11 > 0) && (c22 > 0) && (c33 > 0))
+            @show c11, c22, c33
+            @show rw
+            @show chol_c2
+            @show cov_factor
+        end
+        
+        pc_array[i,2] = log(cov_factor[1,1]) + log(cov_factor[2,2]) + log(cov_factor[3,3]) - ldc
+#        pc_array[i,2] = logdet(cov_factor) - ldc
+        c2_temp = xtx(cov_factor)
+        pc_array[i,1] = pc2dfoster_RIC(r1, v1, c1, r2, v2, c2_temp, HBR)
+    end
+    pc_array
+end
