@@ -262,12 +262,12 @@ end
 @inline function randinvwishartfactor(rng::AbstractRNG, rcw::RevCholWishart{T}) where T
     rcwU = UpperTriangle3(rcw)
     ν = extract_ν(rcw)
-    U11 = randchisq(rng, ν - 2)
+    U11 = randchi(rng, ν - 2)
     U12 = randn(rng)
-    U22 = randchisq(rng, ν - 1)
+    U22 = randchi(rng, ν - 1)
     U13 = randn(rng)
     U23 = randn(rng)
-    U33 = randchisq(rng, ν)
+    U33 = randchi(rng, ν)
     U =  UpperTriangle3(
         U11, U12, U22, U13, U23, U33
     )
