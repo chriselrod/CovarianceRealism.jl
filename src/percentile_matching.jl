@@ -1,4 +1,5 @@
-
+# scale factors are standard deviations
+# square them for (co)variance
 struct PercentileMatch{T} <: AbstractVector{T}
     scale_factors::Vector{T}
 end

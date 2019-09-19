@@ -1,4 +1,5 @@
-
+# scale factors are standard deviations
+# square them for (co)variance
 struct MixtureResults{P,T}
     probs::SVector{P,T}
     scale_factors::SVector{P,T}
