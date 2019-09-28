@@ -529,9 +529,9 @@ mutable struct InvCholCovar{T,B,P,R,L,O} <: DifferentiableObjects.AbstractDiffer
     x::Vector{T}
     δt::Vector{T}
     state::DifferentiableObjects.BFGSState{P,T,R,L}
-    initial_x::PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}
+    initial_x::PaddedMatrices.MutableFixedSizeVector{P,T,R,R}
     ls::DifferentiableObjects.BackTracking2{O,T,Int}
-    ∇::PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}
+    ∇::PaddedMatrices.MutableFixedSizeVector{P,T,R,R}
 end
 
 @generated function InvCholCovar{T,B}(N::Integer) where {T,B}
@@ -543,9 +543,9 @@ end
             Vector{$T}(undef, $B*N),
             Vector{$T}(undef, $B*N),
             DifferentiableObjects.BFGSState(Val($P), $T),
-            fill!(PaddedMatrices.MutableFixedSizePaddedVector{$P,$T}(undef), zero($T)),
+            fill!(PaddedMatrices.MutableFixedSizeVector{$P,$T}(undef), zero($T)),
             DifferentiableObjects.BackTracking2{$T}(Val(2)),
-            PaddedMatrices.MutableFixedSizePaddedVector{$P,$T}(undef)
+            PaddedMatrices.MutableFixedSizeVector{$P,$T}(undef)
         )
     end
 end
@@ -559,9 +559,9 @@ end
             x,
             Vector{$T}(undef, $B*N),
             DifferentiableObjects.BFGSState(Val($P), $T),
-            fill!(PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef), zero($T)),
+            fill!(PaddedMatrices.MutableFixedSizeVector{P,T,R,R}{$P,$T}(undef), zero($T)),
             DifferentiableObjects.BackTracking2{$T}(Val(2)),
-            PaddedMatrices.MutableFixedSizePaddedVector{P,T,R,R}{$P,$T}(undef)
+            PaddedMatrices.MutableFixedSizeVector{P,T,R,R}{$P,$T}(undef)
         )
     end
 end

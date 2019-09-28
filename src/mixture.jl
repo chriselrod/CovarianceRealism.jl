@@ -9,11 +9,11 @@ struct MixtureWorkingData{P,T,S,L,O,TI,F}
     state::DifferentiableObjects.BFGSState{P,T,S,L}
     ls::DifferentiableObjects.BackTracking2{O,T,TI}
     obj::F
-    initial_x::PaddedMatrices.MutableFixedSizePaddedVector{P,T,S,S}
+    initial_x::PaddedMatrices.MutableFixedSizeVector{P,T,S,S}
 end
 
 function MixtureWorkingData(mahal::MahalanobisDistances{T}, ::Val{P}, ::Val{BT} = Val(2)) where {T,P,BT}
-    initial_x = PaddedMatrices.MutableFixedSizePaddedVector{P,T}(undef)
+    initial_x = PaddedMatrices.MutableFixedSizeVector{P,T}(undef)
     MixtureWorkingData(
         DifferentiableObjects.BFGSState(Val(P), T),
         DifferentiableObjects.BackTracking2{T}(Val(BT)),
@@ -34,7 +34,7 @@ end
 @inline Χ₃_pdf(x) = (x² = x^2; x² * exp(-x²/2)) #/ sqrt(2π)
 
 
-@generated function (d::MahalanobisDistances)(x::PaddedMatrices.AbstractMutableFixedSizePaddedVector{TwoPp1,T}) where {T,TwoPp1}
+@generated function (d::MahalanobisDistances)(x::PaddedMatrices.AbstractMutableFixedSizeVector{TwoPp1,T}) where {T,TwoPp1}
     P, R = divrem(TwoPp1,2)
     R == 1 || throw("Only odd dimensions supported; probability is vector presented as 1 less.")
     quote
@@ -88,7 +88,7 @@ end
 @generated function initial_val(v::SVector{P}) where P
     :(vcat((@SVector zeros($(P-1))), v))
 end
-@generated function extract_values(v::Union{SVector{TwoPp1,T},PaddedMatrices.AbstractFixedSizePaddedVector{TwoPp1,T}}) where {TwoPp1,T}
+@generated function extract_values(v::Union{SVector{TwoPp1,T},PaddedMatrices.AbstractFixedSizeVector{TwoPp1,T}}) where {TwoPp1,T}
     P = TwoPp1 >> 1
     quote
         probs = probabilities(Simplex{$(P+1),$T,$P}(SVector{$P,$T}(@ntuple $P p -> v[p])))
